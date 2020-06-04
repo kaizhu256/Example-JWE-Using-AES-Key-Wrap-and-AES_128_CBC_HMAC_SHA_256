@@ -2766,9 +2766,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     let jwk;
     let mac_key;
     let plaintext;
-    let sign;
     let tag;
-    let tmp;
     globalThis.debugInline = function (...argList) {
     /*
      * this function will both print <argList> to stderr
@@ -2904,17 +2902,11 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         207
     ]);
     // B.2.  Encrypt Plaintext to Create Ciphertext
-    enc_key = await crypto.subtle.importKey(
-        "raw",
-        enc_key,
-        {
-            name: "AES-CBC"
-        },
-        true,
-        [
-            "encrypt"
-        ]
-    );
+    enc_key = await crypto.subtle.importKey("raw", enc_key, {
+        name: "AES-CBC"
+    }, true, [
+        "encrypt"
+    ]);
     ciphertext = await crypto.subtle.encrypt({
         iv,
         name: "AES-CBC"
@@ -3023,29 +3015,29 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     globalThis.debugInline(jwe);
     // A.3.8.  Validation
     [
-        aad, mac_key, iv, ciphertext
+        header, cek, iv, ciphertext
     ] = jwe.split(".");
-    aad = new TextEncoder().encode(aad);
-    mac_key = await crypto.subtle.unwrapKey("raw", base64urlToBuffer(
-        mac_key
+    header = new TextEncoder().encode(header);
+    cek = await crypto.subtle.unwrapKey("raw", base64urlToBuffer(
+        cek
     ), jwk, "AES-KW", "AES-CBC", true, [
         "decrypt"
     ]);
-    mac_key = await crypto.subtle.exportKey("raw", mac_key);
-    mac_key = new Uint8Array(mac_key).slice(0, 16);
+    cek = await crypto.subtle.exportKey("raw", cek);
+    cek = new Uint8Array(cek).slice(0, 16);
     iv = base64urlToBuffer(iv);
     ciphertext = base64urlToBuffer(ciphertext);
     // B.5.  Create Input to HMAC Computation
-    tag = new Uint8Array(aad.length + iv.length + ciphertext.length + 8);
+    tag = new Uint8Array(header.length + iv.length + ciphertext.length + 8);
     ii = 0;
     [
-        aad, iv, ciphertext, [
-            // 64-bit length of aad
+        header, iv, ciphertext, [
+            // 64-bit length of header
             0, 0, 0, 0,
-            (aad.length >>> 21) & 0xff,
-            (aad.length >> 13) & 0xff,
-            (aad.length >> 5) & 0xff,
-            (aad.length << 3) & 0xff
+            (header.length >>> 21) & 0xff,
+            (header.length >> 13) & 0xff,
+            (header.length >> 5) & 0xff,
+            (header.length << 3) & 0xff
         ]
     ].forEach(function (elem) {
         jj = 0;
@@ -3056,7 +3048,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         }
     });
     // B.6.  Compute HMAC Value
-    mac_key = await crypto.subtle.importKey("raw", mac_key, {
+    cek = await crypto.subtle.importKey("raw", cek, {
         hash: "SHA-256",
         name: "HMAC"
     }, false, [
@@ -3064,21 +3056,12 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     ]);
     tag = new Uint8Array(await crypto.subtle.sign({
         name: "HMAC"
-    }, mac_key, tag));
+    }, cek, tag));
     // B.7.  Truncate HMAC Value to Create Authentication Tag
     tag = tag.slice(0, 16);
     tag = base64urlFromBuffer(tag);
-
-
-
-    //!! tmp = await sign(
-        //!! cek.slice(0, 16),
-        //!! header,
-        //!! base64urlToBuffer(iv),
-        //!! base64urlToBuffer(ciphertext)
-    //!! );
-    debugInline(tmp);
     assertJsonEqual(tag, "U0m_YmjN04DJvceFICbCVQ");
+// decrypt
 }());
 </script>
 
