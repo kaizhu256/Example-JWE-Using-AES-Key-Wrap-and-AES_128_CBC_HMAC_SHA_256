@@ -3065,7 +3065,8 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         name: "AES-CBC"
     }, jwk, ciphertext);
     plaintext = new TextDecoder().decode(plaintext);
-    debugInline(plaintext);
+    assertJsonEqual(plaintext, "Live long and prosper.");
+    globalThis.debugInline(plaintext);
 }());
 </script>
 
