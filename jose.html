@@ -2763,6 +2763,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     let ii;
     let iv;
     let jj;
+    let jwe;
     let jwk;
     let plaintext;
     //!! let tmp;
@@ -3010,33 +3011,21 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         }
     );
     // A.3.7.  Complete Representation
-    //!! debugInline(cek);
-    //!! cek = await crypto.subtle.wrapKey("jwk", cek, jwk, "AES-KW");
-    //!! globalThis.cek = cek;
-    //!! debugInline(cek);
-    //!! cek = new Uint8Array(cek);
-    //!! debugInline(JSON.stringify(Array.from(cek)));
-    //!! // test example from
-    //!! // https://tools.ietf.org/html/rfc7516#appendix-A.3
-    //!! opt = {};
-    //!! opt.jweCompact = await local.jweEncrypt({
-        //!! cek: "BNMfxVSd_P4LZJ36P6pqzmt81C1vawnbyLEA8I-cLM8",
-        //!! ivOverride: "AxY8DCtDaGlsbGljb3RoZQ",
-        //!! kek: "GawgguFyGrWKav7AX4VKUg",
-        //!! plaintext: "Live long and prosper."
-    //!! });
-    //!! local.assertJsonEqual(opt.jweCompact, (
-        //!! // protected
-        //!! "eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0."
-        //!! // cek
-        //!! + "6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ."
-        //!! // iv
-        //!! + "AxY8DCtDaGlsbGljb3RoZQ."
-        //!! // data
-        //!! + "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY."
-        //!! // tag
-        //!! + "U0m_YmjN04DJvceFICbCVQ"
-    //!! ));
+    jwe = (
+        header + "."
+        + cek + "."
+        + base64urlFromBuffer(iv) + "."
+        + ciphertext + "."
+        + hmac
+    );
+    assertJsonEqual(jwe, (
+        "eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0."
+        + "6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ."
+        + "AxY8DCtDaGlsbGljb3RoZQ."
+        + "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY."
+        + "U0m_YmjN04DJvceFICbCVQ"
+    ));
+    debugInline(jwe);
 }());
 </script>
 
