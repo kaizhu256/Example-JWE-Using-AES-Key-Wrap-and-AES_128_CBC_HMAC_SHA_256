@@ -2870,8 +2870,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         "encrypt"
     ]);
     cek = await crypto.subtle.wrapKey("raw", cek, jwk, "AES-KW");
-    cek = new Uint8Array(cek);
-    cek = base64urlFromBuffer(cek);
+    cek = base64urlFromBuffer(new Uint8Array(cek));
     assertJsonEqual(
         cek,
         "6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ"
@@ -2902,16 +2901,13 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         207
     ]);
     // B.2.  Encrypt Plaintext to Create Ciphertext
-    enc_key = await crypto.subtle.importKey("raw", enc_key, {
-        name: "AES-CBC"
-    }, true, [
+    enc_key = await crypto.subtle.importKey("raw", enc_key, "AES-CBC", true, [
         "encrypt"
     ]);
-    ciphertext = await crypto.subtle.encrypt({
+    ciphertext = new Uint8Array(await crypto.subtle.encrypt({
         iv,
         name: "AES-CBC"
-    }, enc_key, plaintext);
-    ciphertext = new Uint8Array(ciphertext);
+    }, enc_key, plaintext));
     assertJsonEqual(Array.from(ciphertext), [
         40, 57, 83, 181, 119, 33, 133, 148, 198, 185, 243, 24, 152, 230, 6,
         75, 129, 223, 127, 19, 210, 82, 183, 230, 168, 33, 215, 104, 143,
@@ -3023,8 +3019,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     ), jwk, "AES-KW", "AES-CBC", true, [
         "decrypt"
     ]);
-    cek = await crypto.subtle.exportKey("raw", cek);
-    cek = new Uint8Array(cek).slice(0, 16);
+    cek = new Uint8Array(await crypto.subtle.exportKey("raw", cek));
     iv = base64urlToBuffer(iv);
     ciphertext = base64urlToBuffer(ciphertext);
     // B.5.  Create Input to HMAC Computation
@@ -3048,7 +3043,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         }
     });
     // B.6.  Compute HMAC Value
-    cek = await crypto.subtle.importKey("raw", cek, {
+    jwk = await crypto.subtle.importKey("raw", cek.slice(0, 16), {
         hash: "SHA-256",
         name: "HMAC"
     }, false, [
@@ -3056,12 +3051,21 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     ]);
     tag = new Uint8Array(await crypto.subtle.sign({
         name: "HMAC"
-    }, cek, tag));
+    }, jwk, tag));
     // B.7.  Truncate HMAC Value to Create Authentication Tag
     tag = tag.slice(0, 16);
     tag = base64urlFromBuffer(tag);
     assertJsonEqual(tag, "U0m_YmjN04DJvceFICbCVQ");
-// decrypt
+    // decrypt
+    jwk = await crypto.subtle.importKey("raw", cek.slice(16), "AES-CBC", true, [
+        "decrypt"
+    ]);
+    plaintext = await crypto.subtle.decrypt({
+        iv,
+        name: "AES-CBC"
+    }, jwk, ciphertext);
+    plaintext = new TextDecoder().decode(plaintext);
+    debugInline(plaintext);
 }());
 </script>
 
