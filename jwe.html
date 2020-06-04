@@ -3123,11 +3123,11 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     decrypt = async function (jwk, jwe) {
         let cek;
         let ciphertext;
+        let crypto;
         let header;
         let iv;
-        let subtle;
         let tag;
-        subtle = globalThis.crypto.subtle;
+        crypto = globalThis.crypto;
         // A.3.8.  Validation
         [
             header, cek, iv, ciphertext, tag
@@ -3135,22 +3135,24 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         if (typeof tag !== "string") {
             throw new Error("jwe failed validation - " + jwe);
         }
-        cek = await subtle.unwrapKey("raw", base64urlToBuffer(
+        cek = await crypto.subtle.unwrapKey("raw", base64urlToBuffer(
             cek
         ), jwk, "AES-KW", "AES-CBC", true, [
             "decrypt"
         ]);
-        cek = new Uint8Array(await subtle.exportKey("raw", cek));
+        cek = new Uint8Array(await crypto.subtle.exportKey("raw", cek));
         iv = base64urlToBuffer(iv);
         ciphertext = base64urlToBuffer(ciphertext);
         if (await sign(jwk, jwe) !== tag) {
             throw new Error("jwe failed validation - " + jwe);
         }
         // decrypt
-        jwk = await subtle.importKey("raw", cek.slice(16), "AES-CBC", true, [
+        jwk = await crypto.subtle.importKey("raw", cek.subarray(
+            16
+        ), "AES-CBC", true, [
             "decrypt"
         ]);
-        return new TextDecoder().decode(await subtle.decrypt({
+        return new TextDecoder().decode(await crypto.subtle.decrypt({
             iv,
             name: "AES-CBC"
         }, jwk, ciphertext));
@@ -3159,10 +3161,8 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         let cek;
         let compact;
         let crypto;
-        let subtle;
         let tmp;
         crypto = globalThis.crypto;
-        subtle = crypto.subtle;
         compact = "";
         // https://tools.ietf.org/html/rfc7516#appendix-A.3
         // A.3.  Example JWE Using AES Key Wrap and AES_128_CBC_HMAC_SHA_256
@@ -3180,12 +3180,12 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         compact += tmp;
         // A.3.2.  Content Encryption Key (CEK)
         cek = crypto.getRandomValues(new Uint8Array(32));
-        tmp = await subtle.importKey("raw", cek, {
+        tmp = await crypto.subtle.importKey("raw", cek, {
             name: "AES-CBC"
         }, true, [
             "encrypt"
         ]);
-        tmp = await subtle.wrapKey("raw", tmp, jwk, "AES-KW");
+        tmp = await crypto.subtle.wrapKey("raw", tmp, jwk, "AES-KW");
         tmp = base64urlFromBuffer(new Uint8Array(tmp));
         // jwe BASE64URL(JWE Encrypted Key) - cek
         compact += "." + tmp;
@@ -3198,12 +3198,12 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         // Appendix B.  Example AES_128_CBC_HMAC_SHA_256 Computation
         // B.1.  Extract MAC_KEY and ENC_KEY from Key
         // B.2.  Encrypt Plaintext to Create Ciphertext
-        tmp = await subtle.importKey("raw", cek.slice(
+        tmp = await crypto.subtle.importKey("raw", cek.subarray(
             16
         ), "AES-CBC", true, [
             "encrypt"
         ]);
-        tmp = base64urlFromBuffer(new Uint8Array(await subtle.encrypt({
+        tmp = base64urlFromBuffer(new Uint8Array(await crypto.subtle.encrypt({
             iv,
             name: "AES-CBC"
         }, tmp, plaintext)));
@@ -3217,13 +3217,13 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     sign = async function (jwk, jwe) {
         let cek;
         let ciphertext;
+        let crypto;
         let ii;
         let iv;
         let jj;
         let protectedHeader;
-        let subtle;
         let tag;
-        subtle = globalThis.crypto.subtle;
+        crypto = globalThis.crypto;
         // A.3.8.  Validation
         [
             protectedHeader, cek, iv, ciphertext
@@ -3232,12 +3232,12 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
             throw new Error("jwe failed signing - " + jwe);
         }
         protectedHeader = new TextEncoder().encode(protectedHeader);
-        cek = await subtle.unwrapKey("raw", base64urlToBuffer(
+        cek = await crypto.subtle.unwrapKey("raw", base64urlToBuffer(
             cek
         ), jwk, "AES-KW", "AES-CBC", true, [
             "decrypt"
         ]);
-        cek = new Uint8Array(await subtle.exportKey("raw", cek));
+        cek = new Uint8Array(await crypto.subtle.exportKey("raw", cek));
         iv = base64urlToBuffer(iv);
         ciphertext = base64urlToBuffer(ciphertext);
         // B.5.  Create Input to HMAC Computation
@@ -3263,17 +3263,17 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
             }
         });
         // B.6.  Compute HMAC Value
-        jwk = await subtle.importKey("raw", cek.slice(0, 16), {
+        jwk = await crypto.subtle.importKey("raw", cek.subarray(0, 16), {
             hash: "SHA-256",
             name: "HMAC"
         }, false, [
             "sign"
         ]);
-        tag = new Uint8Array(await subtle.sign({
+        tag = new Uint8Array(await crypto.subtle.sign({
             name: "HMAC"
         }, jwk, tag));
         // B.7.  Truncate HMAC Value to Create Authentication Tag
-        return base64urlFromBuffer(tag.slice(0, 16));
+        return base64urlFromBuffer(tag.subarray(0, 16));
     };
     jwk = {
         "alg": "A128KW",
