@@ -2747,6 +2747,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
 
 <script>
 /* jslint utility2:true */
+// https://tools.ietf.org/html/rfc7516#appendix-A.3
 (async function () {
     "use strict";
     let aad;
@@ -2759,13 +2760,13 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     let ciphertext;
     let crypto;
     let header;
-    let hmac;
     let ii;
     let iv;
     let jj;
     let jwe;
     let jwk;
     let plaintext;
+    let tag;
     globalThis.debugInline = function (...argList) {
     /*
      * this function will both print <argList> to stderr
@@ -2938,7 +2939,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         101
     ]);
     // B.5.  Create Input to HMAC Computation
-    hmac = new Uint8Array(aad.length + iv.length + ciphertext.length + 8);
+    tag = new Uint8Array(aad.length + iv.length + ciphertext.length + 8);
     // concat data
     ii = 0;
     [
@@ -2953,12 +2954,12 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     ].forEach(function (elem) {
         jj = 0;
         while (jj < elem.length) {
-            hmac[ii] = elem[jj];
+            tag[ii] = elem[jj];
             ii += 1;
             jj += 1;
         }
     });
-    assertJsonEqual(Array.from(hmac), [
+    assertJsonEqual(Array.from(tag), [
         101, 121, 74, 104, 98, 71, 99, 105, 79, 105, 74, 66, 77, 84, 73, 52,
         83, 49, 99, 105, 76, 67, 74, 108, 98, 109, 77, 105, 79, 105, 74, 66,
         77, 84, 73, 52, 81, 48, 74, 68, 76, 85, 104, 84, 77, 106, 85, 50, 73,
@@ -2980,28 +2981,28 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
             "sign"
         ]
     );
-    hmac = new Uint8Array(await crypto.subtle.sign({
+    tag = new Uint8Array(await crypto.subtle.sign({
         name: "HMAC"
-    }, aes_128_cbc_hmac_sha_256_mac_key, hmac));
-    assertJsonEqual(Array.from(hmac), [
+    }, aes_128_cbc_hmac_sha_256_mac_key, tag));
+    assertJsonEqual(Array.from(tag), [
         83, 73, 191, 98, 104, 205, 211, 128, 201, 189, 199, 133, 32, 38,
         194, 85, 9, 84, 229, 201, 219, 135, 44, 252, 145, 102, 179, 140, 105,
         86, 229, 116
     ]);
     // B.7.  Truncate HMAC Value to Create Authentication Tag
-    hmac = hmac.slice(0, 16);
-    assertJsonEqual(Array.from(hmac), [
+    tag = tag.slice(0, 16);
+    assertJsonEqual(Array.from(tag), [
         83, 73, 191, 98, 104, 205, 211, 128, 201, 189, 199, 133, 32, 38,
         194, 85
     ]);
     ciphertext = base64urlFromBuffer(ciphertext);
-    hmac = base64urlFromBuffer(hmac);
+    tag = base64urlFromBuffer(tag);
     assertJsonEqual({
         ciphertext,
-        hmac
+        tag
     }, {
         ciphertext: "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY",
-        hmac: "U0m_YmjN04DJvceFICbCVQ"
+        tag: "U0m_YmjN04DJvceFICbCVQ"
     });
     // A.3.7.  Complete Representation
     jwe = (
@@ -3009,16 +3010,25 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         + cek + "."
         + base64urlFromBuffer(iv) + "."
         + ciphertext + "."
-        + hmac
+        + tag
     );
     assertJsonEqual(jwe, (
+        // header
         "eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0."
+        // cek
         + "6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ."
+        // iv
         + "AxY8DCtDaGlsbGljb3RoZQ."
+        // ciphertext
         + "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY."
+        // tag
         + "U0m_YmjN04DJvceFICbCVQ"
     ));
     globalThis.debugInline(jwe);
+    // A.3.8.  Validation
+    [
+        header, cek, iv, ciphertext, tag
+    ] = jwe.split(".");
 }());
 </script>
 
