@@ -20,8 +20,8 @@ Code (MAC) capabilities are described in the separate JSON Web
 Signature (JWS) specification." />
 <meta name="DC.Title" content="JSON Web Encryption (JWE)" />
 
-<link rel="icon" href="/images/rfc.png" type="image/png" />
-<link rel="shortcut icon" href="/images/rfc.png" type="image/png" />
+<!--!! <link rel="icon" href="/images/rfc.png" type="image/png" /> -->
+<!--!! <link rel="shortcut icon" href="/images/rfc.png" type="image/png" /> -->
 <title>RFC 7516 - JSON Web Encryption (JWE)</title>
 
 <style type="text/css">
@@ -2749,9 +2749,14 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
 /* jslint utility2:true */
 (async function () {
     "use strict";
-    let cryptoSubtle;
+    let base64urlFromUint8;
+    //!! let base64urlToUint8;
+    let cek;
+    let crypto;
     let header;
+    let jwk;
     let plaintext;
+    //!! let tmp;
     globalThis.debugInline = function (...argList) {
     /*
      * this function will both print <argList> to stderr
@@ -2772,19 +2777,115 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
             throw new Error(JSON.stringify(aa) + " !== " + JSON.stringify(bb));
         }
     }
-    cryptoSubtle = globalThis.cryptoSubtle;
+    base64urlFromUint8 = function (uint8) {
+        return globalThis.btoa(String.fromCharCode(...uint8)).replace((
+            /\+/g
+        ), "-").replace((
+            /\//g
+        ), "_").replace((
+            /\=*?$/
+        ), "");
+    };
+    //!! base64urlToUint8 = function (base64url) {
+        //!! jwk = Uint8Array.from(globalThis.atob(base64url), function (chr) {
+            //!! return chr.charCodeAt(0);
+        //!! });
+    //!! };
+    crypto = globalThis.crypto.subtle;
     // https://tools.ietf.org/html/rfc7516#appendix-A.3
     // A.3.  Example JWE Using AES Key Wrap and AES_128_CBC_HMAC_SHA_256
     plaintext = "Live long and prosper.";
+    // A.3.1.  JOSE Header
     header = "{\"alg\":\"A128KW\",\"enc\":\"A128CBC-HS256\"}";
     header = globalThis.btoa(header).replace((
+        /\+/g
+    ), "-").replace((
+        /\//g
+    ), "_").replace((
         /\=*?$/
     ), "");
-    debugInline(header);
     assertJsonEqual(
         header,
         "eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0"
     );
+    // A.3.2.  Content Encryption Key (CEK)
+    cek = Uint8Array.from([
+        4, 211, 31, 197, 84, 157, 252, 254, 11, 100, 157, 250, 63, 170, 106,
+        206, 107, 124, 212, 45, 111, 107, 9, 219, 200, 177, 0, 240, 143, 156,
+        44, 207
+    ]);
+    cek = base64urlFromUint8(cek);
+    cek = {
+        //!! "alg": "A128CBC-HS256",
+        //!! "alg": "A128CBC",
+        "k": cek,
+        "kty": "oct"
+    };
+    //!! debugInline(cek);
+    assertJsonEqual(
+        cek,
+        {
+            //!! "alg": "A128CBC-HS256",
+            "k": "BNMfxVSd_P4LZJ36P6pqzmt81C1vawnbyLEA8I-cLM8",
+            "kty": "oct"
+        }
+    );
+    jwk = {
+        "alg": "A128KW",
+        "k": "GawgguFyGrWKav7AX4VKUg",
+        "kty": "oct"
+    };
+    //!! jwk = Uint8Array.from(globalThis.atob(jwk.k), function (chr) {
+        //!! return chr.charCodeAt(0);
+    //!! });
+    //!! debugInline(jwk);
+    jwk = await crypto.importKey("jwk", jwk, {
+        name: "AES-KW"
+    }, false, [
+        "wrapKey"
+    ]);
+    cek = await crypto.importKey("jwk", cek, {
+        name: "AES-CBC"
+    }, true, [
+        "encrypt"
+    ]);
+    cek = await crypto.wrapKey("raw", cek, jwk, "AES-KW");
+    cek = new Uint8Array(cek);
+    cek = base64urlFromUint8(cek);
+    assertJsonEqual(
+        cek,
+        "6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ"
+    );
+    //!! cek = Uint8Array.from(globalThis.atob(cek), function (chr) {
+        //!! return chr.charCodeAt(0);
+    //!! });
+    debugInline(cek);
+    //!! cek = await crypto.wrapKey("jwk", cek, jwk, "AES-KW");
+    //!! globalThis.cek = cek;
+    //!! debugInline(cek);
+    //!! cek = new Uint8Array(cek);
+    //!! debugInline(JSON.stringify(Array.from(cek)));
+    //!! // test example from
+    //!! // https://tools.ietf.org/html/rfc7516#appendix-A.3
+    //!! opt = {};
+    //!! opt.jweCompact = await local.jweEncrypt({
+        //!! cek: "BNMfxVSd_P4LZJ36P6pqzmt81C1vawnbyLEA8I-cLM8",
+        //!! ivOverride: "AxY8DCtDaGlsbGljb3RoZQ",
+        //!! kek: "GawgguFyGrWKav7AX4VKUg",
+        //!! plaintext: "Live long and prosper."
+    //!! });
+    //!! local.assertJsonEqual(opt.jweCompact, (
+        //!! // protected
+        //!! "eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0."
+        //!! // cek
+        //!! + "6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ."
+        //!! // iv
+        //!! + "AxY8DCtDaGlsbGljb3RoZQ."
+        //!! // data
+        //!! + "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY."
+        //!! // tag
+        //!! + "U0m_YmjN04DJvceFICbCVQ"
+    //!! ));
 }());
 </script>
 
