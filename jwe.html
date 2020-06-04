@@ -2786,8 +2786,15 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
             throw new Error(JSON.stringify(aa) + " !== " + JSON.stringify(bb));
         }
     }
-    base64urlFromBuffer = function (uint8) {
-        return globalThis.btoa(String.fromCharCode(...uint8)).replace((
+    base64urlFromBuffer = function (buf) {
+        let base64url;
+        base64url = "";
+        ii = 0;
+        while (ii < buf.byteLength) {
+            base64url += String.fromCharCode(buf[ii]);
+            ii += 1;
+        }
+        return globalThis.btoa(base64url).replace((
             /\+/g
         ), "-").replace((
             /\//g
@@ -2811,13 +2818,10 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     // A.3.  Example JWE Using AES Key Wrap and AES_128_CBC_HMAC_SHA_256
     plaintext = "Live long and prosper.";
     plaintext = await new TextEncoder().encode(plaintext);
-    assertJsonEqual(
-        Array.from(plaintext),
-        [
-            76, 105, 118, 101, 32, 108, 111, 110, 103, 32, 97, 110, 100, 32,
-            112, 114, 111, 115, 112, 101, 114, 46
-        ]
-    );
+    assertJsonEqual(Array.from(plaintext), [
+        76, 105, 118, 101, 32, 108, 111, 110, 103, 32, 97, 110, 100, 32,
+        112, 114, 111, 115, 112, 101, 114, 46
+    ]);
     // A.3.1.  JOSE Header
     header = "{\"alg\":\"A128KW\",\"enc\":\"A128CBC-HS256\"}";
     header = globalThis.btoa(header).replace((
@@ -2841,19 +2845,13 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     aes_128_cbc_hmac_sha_256_enc_key = cek.slice(16);
     cek = base64urlFromBuffer(cek);
     cek = {
-        //!! "alg": "A128CBC-HS256",
-        //!! "alg": "A128CBC",
         "k": cek,
         "kty": "oct"
     };
-    assertJsonEqual(
-        cek,
-        {
-            //!! "alg": "A128CBC-HS256",
-            "k": "BNMfxVSd_P4LZJ36P6pqzmt81C1vawnbyLEA8I-cLM8",
-            "kty": "oct"
-        }
-    );
+    assertJsonEqual(cek, {
+        "k": "BNMfxVSd_P4LZJ36P6pqzmt81C1vawnbyLEA8I-cLM8",
+        "kty": "oct"
+    });
     // A.3.3.  Key Encryption
     jwk = {
         "alg": "A128KW",
@@ -2998,16 +2996,13 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     ]);
     ciphertext = base64urlFromBuffer(ciphertext);
     hmac = base64urlFromBuffer(hmac);
-    assertJsonEqual(
-        {
-            ciphertext,
-            hmac
-        },
-        {
-            ciphertext: "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY",
-            hmac: "U0m_YmjN04DJvceFICbCVQ"
-        }
-    );
+    assertJsonEqual({
+        ciphertext,
+        hmac
+    }, {
+        ciphertext: "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY",
+        hmac: "U0m_YmjN04DJvceFICbCVQ"
+    });
     // A.3.7.  Complete Representation
     jwe = (
         header + "."
@@ -3023,7 +3018,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         + "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY."
         + "U0m_YmjN04DJvceFICbCVQ"
     ));
-    debugInline(jwe);
+    globalThis.debugInline(jwe);
 }());
 </script>
 
