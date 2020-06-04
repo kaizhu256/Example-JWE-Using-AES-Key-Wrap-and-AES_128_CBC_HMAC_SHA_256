@@ -2752,6 +2752,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     "use strict";
     let aad;
     let aal;
+    let assertJsonEqual;
     let base64urlFromBuffer;
     let base64urlToBuffer;
     let cek;
@@ -2777,7 +2778,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         console.error("\n");
         return argList[0];
     };
-    function assertJsonEqual(aa, bb) {
+    assertJsonEqual = function (aa, bb) {
     /*
      * this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
      */
@@ -2786,7 +2787,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         if (aa !== bb) {
             throw new Error(JSON.stringify(aa) + " !== " + JSON.stringify(bb));
         }
-    }
+    };
     base64urlFromBuffer = function (buf) {
         let base64url;
         base64url = "";
@@ -3073,10 +3074,21 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
 
 (function () {
     "use strict";
+    let assertJsonEqual;
     let base64urlFromBuffer;
     let base64urlToBuffer;
     let decrypt;
     let encrypt;
+    assertJsonEqual = function (aa, bb) {
+    /*
+     * this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
+     */
+        aa = JSON.stringify(aa);
+        bb = JSON.stringify(bb);
+        if (aa !== bb) {
+            throw new Error(JSON.stringify(aa) + " !== " + JSON.stringify(bb));
+        }
+    };
     base64urlFromBuffer = function (buf) {
         let base64url;
         let ii;
@@ -3113,14 +3125,14 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         let iv;
         let jj;
         let jwk;
-        let plaintext;
         let subtle;
         let tag;
         subtle = globalThis.crypto.subtle;
+        jwe = jwe.split(".");
         // A.3.8.  Validation
         [
             header, cek, iv, ciphertext
-        ] = jwe.split(".");
+        ] = jwe;
         header = new TextEncoder().encode(header);
         cek = await subtle.unwrapKey("raw", base64urlToBuffer(
             cek
@@ -3163,16 +3175,17 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         // B.7.  Truncate HMAC Value to Create Authentication Tag
         tag = tag.slice(0, 16);
         tag = base64urlFromBuffer(tag);
+        if (tag !== jwe[4]) {
+            throw new Error("jwe validation failed");
+        }
         // decrypt
         jwk = await subtle.importKey("raw", cek.slice(16), "AES-CBC", true, [
             "decrypt"
         ]);
-        plaintext = await subtle.decrypt({
+        return new TextDecoder().decode(await subtle.decrypt({
             iv,
             name: "AES-CBC"
-        }, jwk, ciphertext);
-        plaintext = new TextDecoder().decode(plaintext);
-        return plaintext;
+        }, jwk, ciphertext));
     };
 }());
 </script>
