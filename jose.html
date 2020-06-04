@@ -2749,11 +2749,20 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
 /* jslint utility2:true */
 (async function () {
     "use strict";
-    let base64urlFromUint8;
-    //!! let base64urlToUint8;
+    let aad;
+    let aal;
+    let aes_128_cbc_hmac_sha_256_enc_key;
+    let aes_128_cbc_hmac_sha_256_mac_key;
+    let base64urlFromBuffer;
+    let base64urlToBuffer;
     let cek;
+    let ciphertext;
     let crypto;
     let header;
+    let hmac;
+    let ii;
+    let iv;
+    let jj;
     let jwk;
     let plaintext;
     //!! let tmp;
@@ -2777,7 +2786,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
             throw new Error(JSON.stringify(aa) + " !== " + JSON.stringify(bb));
         }
     }
-    base64urlFromUint8 = function (uint8) {
+    base64urlFromBuffer = function (uint8) {
         return globalThis.btoa(String.fromCharCode(...uint8)).replace((
             /\+/g
         ), "-").replace((
@@ -2786,15 +2795,29 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
             /\=*?$/
         ), "");
     };
-    //!! base64urlToUint8 = function (base64url) {
-        //!! jwk = Uint8Array.from(globalThis.atob(base64url), function (chr) {
-            //!! return chr.charCodeAt(0);
-        //!! });
-    //!! };
-    crypto = globalThis.crypto.subtle;
+    base64urlToBuffer = function (base64url) {
+        return Uint8Array.from(globalThis.atob(base64url.replace((
+            /-/g
+        ), "+").replace((
+            /_/g
+        ), "/").replace((
+            /\=*?$/
+        ), "")), function (chr) {
+            return chr.charCodeAt(0);
+        });
+    };
+    crypto = globalThis.crypto;
     // https://tools.ietf.org/html/rfc7516#appendix-A.3
     // A.3.  Example JWE Using AES Key Wrap and AES_128_CBC_HMAC_SHA_256
     plaintext = "Live long and prosper.";
+    plaintext = await new TextEncoder().encode(plaintext);
+    assertJsonEqual(
+        Array.from(plaintext),
+        [
+            76, 105, 118, 101, 32, 108, 111, 110, 103, 32, 97, 110, 100, 32,
+            112, 114, 111, 115, 112, 101, 114, 46
+        ]
+    );
     // A.3.1.  JOSE Header
     header = "{\"alg\":\"A128KW\",\"enc\":\"A128CBC-HS256\"}";
     header = globalThis.btoa(header).replace((
@@ -2814,14 +2837,15 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         206, 107, 124, 212, 45, 111, 107, 9, 219, 200, 177, 0, 240, 143, 156,
         44, 207
     ]);
-    cek = base64urlFromUint8(cek);
+    aes_128_cbc_hmac_sha_256_mac_key = cek.slice(0, 16);
+    aes_128_cbc_hmac_sha_256_enc_key = cek.slice(16);
+    cek = base64urlFromBuffer(cek);
     cek = {
         //!! "alg": "A128CBC-HS256",
         //!! "alg": "A128CBC",
         "k": cek,
         "kty": "oct"
     };
-    //!! debugInline(cek);
     assertJsonEqual(
         cek,
         {
@@ -2830,37 +2854,164 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
             "kty": "oct"
         }
     );
+    // A.3.3.  Key Encryption
     jwk = {
         "alg": "A128KW",
         "k": "GawgguFyGrWKav7AX4VKUg",
         "kty": "oct"
     };
-    //!! jwk = Uint8Array.from(globalThis.atob(jwk.k), function (chr) {
-        //!! return chr.charCodeAt(0);
-    //!! });
     //!! debugInline(jwk);
-    jwk = await crypto.importKey("jwk", jwk, {
+    jwk = await crypto.subtle.importKey("jwk", jwk, {
         name: "AES-KW"
     }, false, [
         "wrapKey"
     ]);
-    cek = await crypto.importKey("jwk", cek, {
+    cek = await crypto.subtle.importKey("jwk", cek, {
         name: "AES-CBC"
     }, true, [
         "encrypt"
     ]);
-    cek = await crypto.wrapKey("raw", cek, jwk, "AES-KW");
+    cek = await crypto.subtle.wrapKey("raw", cek, jwk, "AES-KW");
     cek = new Uint8Array(cek);
-    cek = base64urlFromUint8(cek);
+    cek = base64urlFromBuffer(cek);
     assertJsonEqual(
         cek,
         "6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ"
     );
-    //!! cek = Uint8Array.from(globalThis.atob(cek), function (chr) {
-        //!! return chr.charCodeAt(0);
-    //!! });
-    debugInline(cek);
-    //!! cek = await crypto.wrapKey("jwk", cek, jwk, "AES-KW");
+    // A.3.4.  Initialization Vector
+    iv = base64urlToBuffer("AxY8DCtDaGlsbGljb3RoZQ");
+    assertJsonEqual(Array.from(iv), [
+        3, 22, 60, 12, 43, 67, 104, 105, 108, 108, 105, 99, 111, 116, 104,
+        101
+    ]);
+    // A.3.5.  Additional Authenticated Data
+    aad = Uint8Array.from([
+        101, 121, 74, 104, 98, 71, 99, 105, 79, 105, 74, 66, 77, 84, 73, 52,
+        83, 49, 99, 105, 76, 67, 74, 108, 98, 109, 77, 105, 79, 105, 74, 66,
+        77, 84, 73, 52, 81, 48, 74, 68, 76, 85, 104, 84, 77, 106, 85, 50, 73,
+        110, 48
+    ]);
+    // A.3.6.  Content Encryption
+    // Appendix B.  Example AES_128_CBC_HMAC_SHA_256 Computation
+    // B.1.  Extract MAC_KEY and ENC_KEY from Key
+    assertJsonEqual(Array.from(aes_128_cbc_hmac_sha_256_mac_key), [
+        4, 211, 31, 197, 84, 157, 252, 254, 11, 100, 157, 250, 63, 170, 106,
+        206
+    ]);
+    assertJsonEqual(Array.from(aes_128_cbc_hmac_sha_256_enc_key), [
+        107, 124, 212, 45, 111, 107, 9, 219, 200, 177, 0, 240, 143, 156, 44,
+        207
+    ]);
+    // B.2.  Encrypt Plaintext to Create Ciphertext
+    aes_128_cbc_hmac_sha_256_enc_key = await crypto.subtle.importKey(
+        "raw",
+        aes_128_cbc_hmac_sha_256_enc_key,
+        {
+            name: "AES-CBC"
+        },
+        true,
+        [
+            "encrypt"
+        ]
+    );
+    ciphertext = await crypto.subtle.encrypt({
+        iv,
+        name: "AES-CBC"
+    }, aes_128_cbc_hmac_sha_256_enc_key, plaintext);
+    ciphertext = new Uint8Array(ciphertext);
+    assertJsonEqual(Array.from(ciphertext), [
+        40, 57, 83, 181, 119, 33, 133, 148, 198, 185, 243, 24, 152, 230, 6,
+        75, 129, 223, 127, 19, 210, 82, 183, 230, 168, 33, 215, 104, 143,
+        112, 56, 102
+    ]);
+    // B.3.  64-Bit Big-Endian Representation of AAD Length
+    aal = Uint8Array.from([
+        0, 0, 0, 0,
+        (aad.length >>> 21) & 0xff,
+        (aad.length >> 13) & 0xff,
+        (aad.length >> 5) & 0xff,
+        (8 * aad.length) & 0xff
+    ]);
+    assertJsonEqual(Array.from(aal), [
+        0, 0, 0, 0, 0, 0, 1, 152
+    ]);
+    // B.4.  Initialization Vector Value
+    assertJsonEqual(Array.from(iv), [
+        3, 22, 60, 12, 43, 67, 104, 105, 108, 108, 105, 99, 111, 116, 104,
+        101
+    ]);
+    // B.5.  Create Input to HMAC Computation
+    hmac = new Uint8Array(aad.length + iv.length + ciphertext.length + 8);
+    // concat data
+    ii = 0;
+    [
+        aad, iv, ciphertext, [
+            // 64-bit length of aad
+            0, 0, 0, 0,
+            (aad.length >>> 21) & 0xff,
+            (aad.length >> 13) & 0xff,
+            (aad.length >> 5) & 0xff,
+            (8 * aad.length) & 0xff
+        ]
+    ].forEach(function (elem) {
+        jj = 0;
+        while (jj < elem.length) {
+            hmac[ii] = elem[jj];
+            ii += 1;
+            jj += 1;
+        }
+    });
+    assertJsonEqual(Array.from(hmac), [
+        101, 121, 74, 104, 98, 71, 99, 105, 79, 105, 74, 66, 77, 84, 73, 52,
+        83, 49, 99, 105, 76, 67, 74, 108, 98, 109, 77, 105, 79, 105, 74, 66,
+        77, 84, 73, 52, 81, 48, 74, 68, 76, 85, 104, 84, 77, 106, 85, 50, 73,
+        110, 48, 3, 22, 60, 12, 43, 67, 104, 105, 108, 108, 105, 99, 111,
+        116, 104, 101, 40, 57, 83, 181, 119, 33, 133, 148, 198, 185, 243, 24,
+        152, 230, 6, 75, 129, 223, 127, 19, 210, 82, 183, 230, 168, 33, 215,
+        104, 143, 112, 56, 102, 0, 0, 0, 0, 0, 0, 1, 152
+    ]);
+    // B.6.  Compute HMAC Value
+    aes_128_cbc_hmac_sha_256_mac_key = await crypto.subtle.importKey(
+        "raw",
+        aes_128_cbc_hmac_sha_256_mac_key,
+        {
+            hash: "SHA-256",
+            name: "HMAC"
+        },
+        false,
+        [
+            "sign"
+        ]
+    );
+    hmac = new Uint8Array(await crypto.subtle.sign({
+        name: "HMAC"
+    }, aes_128_cbc_hmac_sha_256_mac_key, hmac));
+    assertJsonEqual(Array.from(hmac), [
+        83, 73, 191, 98, 104, 205, 211, 128, 201, 189, 199, 133, 32, 38,
+        194, 85, 9, 84, 229, 201, 219, 135, 44, 252, 145, 102, 179, 140, 105,
+        86, 229, 116
+    ]);
+    // B.7.  Truncate HMAC Value to Create Authentication Tag
+    hmac = hmac.slice(0, 16);
+    assertJsonEqual(Array.from(hmac), [
+        83, 73, 191, 98, 104, 205, 211, 128, 201, 189, 199, 133, 32, 38,
+        194, 85
+    ]);
+    ciphertext = base64urlFromBuffer(ciphertext);
+    hmac = base64urlFromBuffer(hmac);
+    assertJsonEqual(
+        {
+            ciphertext,
+            hmac
+        },
+        {
+            ciphertext: "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY",
+            hmac: "U0m_YmjN04DJvceFICbCVQ"
+        }
+    );
+    // A.3.7.  Complete Representation
+    //!! debugInline(cek);
+    //!! cek = await crypto.subtle.wrapKey("jwk", cek, jwk, "AES-KW");
     //!! globalThis.cek = cek;
     //!! debugInline(cek);
     //!! cek = new Uint8Array(cek);
