@@ -2766,7 +2766,6 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     let jwe;
     let jwk;
     let plaintext;
-    //!! let tmp;
     globalThis.debugInline = function (...argList) {
     /*
      * this function will both print <argList> to stderr
@@ -2861,7 +2860,6 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         "k": "GawgguFyGrWKav7AX4VKUg",
         "kty": "oct"
     };
-    //!! debugInline(jwk);
     jwk = await crypto.subtle.importKey("jwk", jwk, {
         name: "AES-KW"
     }, false, [
