@@ -3120,7 +3120,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
             return chr.charCodeAt(0);
         });
     };
-    decrypt = async function (jwe, jwk) {
+    decrypt = async function (jwk, jwe) {
         let cek;
         let ciphertext;
         let header;
@@ -3132,6 +3132,9 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         [
             header, cek, iv, ciphertext, tag
         ] = jwe.split(".");
+        if (typeof tag !== "string") {
+            throw new Error("jwe failed validation - " + jwe);
+        }
         cek = await subtle.unwrapKey("raw", base64urlToBuffer(
             cek
         ), jwk, "AES-KW", "AES-CBC", true, [
@@ -3140,7 +3143,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         cek = new Uint8Array(await subtle.exportKey("raw", cek));
         iv = base64urlToBuffer(iv);
         ciphertext = base64urlToBuffer(ciphertext);
-        if (await sign(jwe, cek) !== tag) {
+        if (await sign(jwk, jwe) !== tag) {
             throw new Error("jwe failed validation - " + jwe);
         }
         // decrypt
@@ -3152,23 +3155,83 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
             name: "AES-CBC"
         }, jwk, ciphertext));
     };
-    sign = async function (jwe, cek) {
+    encrypt = async function (jwk, plaintext, iv) {
+        let cek;
+        let compact;
+        let crypto;
+        let subtle;
+        let tmp;
+        crypto = globalThis.crypto;
+        subtle = crypto.subtle;
+        compact = "";
+        // https://tools.ietf.org/html/rfc7516#appendix-A.3
+        // A.3.  Example JWE Using AES Key Wrap and AES_128_CBC_HMAC_SHA_256
+        plaintext = new TextEncoder().encode(plaintext);
+        // A.3.1.  JOSE Header
+        tmp = "{\"alg\":\"A128KW\",\"enc\":\"A128CBC-HS256\"}";
+        tmp = globalThis.btoa(tmp).replace((
+            /\+/g
+        ), "-").replace((
+            /\//g
+        ), "_").replace((
+            /\=*?$/
+        ), "");
+        // jwe BASE64URL(UTF8(JWE Protected Header) - protected
+        compact += tmp;
+        // A.3.2.  Content Encryption Key (CEK)
+        cek = crypto.getRandomValues(new Uint8Array(32));
+        tmp = await subtle.importKey("raw", cek, {
+            name: "AES-CBC"
+        }, true, [
+            "encrypt"
+        ]);
+        tmp = await subtle.wrapKey("raw", tmp, jwk, "AES-KW");
+        tmp = base64urlFromBuffer(new Uint8Array(tmp));
+        // jwe BASE64URL(JWE Encrypted Key) - cek
+        compact += "." + tmp;
+        // A.3.4.  Initialization Vector
+        iv = iv || crypto.getRandomValues(new Uint8Array(16));
+        // jwe BASE64URL(JWE Initialization Vector) - iv
+        compact += "." + base64urlFromBuffer(iv);
+        // A.3.5.  Additional Authenticated Data
+        // A.3.6.  Content Encryption
+        // Appendix B.  Example AES_128_CBC_HMAC_SHA_256 Computation
+        // B.1.  Extract MAC_KEY and ENC_KEY from Key
+        // B.2.  Encrypt Plaintext to Create Ciphertext
+        tmp = await subtle.importKey("raw", cek.slice(
+            16
+        ), "AES-CBC", true, [
+            "encrypt"
+        ]);
+        tmp = base64urlFromBuffer(new Uint8Array(await subtle.encrypt({
+            iv,
+            name: "AES-CBC"
+        }, tmp, plaintext)));
+        // jwe BASE64URL(JWE Ciphertext) - ciphertext
+        compact += "." + tmp;
+        tmp = await sign(jwk, compact);
+        // jwe BASE64URL(JWE Authentication Tag) - tag
+        compact += "." + tmp;
+        return compact;
+    };
+    sign = async function (jwk, jwe) {
+        let cek;
         let ciphertext;
-        let header;
         let ii;
         let iv;
         let jj;
+        let protectedHeader;
         let subtle;
         let tag;
         subtle = globalThis.crypto.subtle;
         // A.3.8.  Validation
         [
-            header, cek, iv, ciphertext
+            protectedHeader, cek, iv, ciphertext
         ] = jwe.split(".");
         if (typeof ciphertext !== "string") {
-            throw new Error("jwe signing failed - " + jwe);
+            throw new Error("jwe failed signing - " + jwe);
         }
-        header = new TextEncoder().encode(header);
+        protectedHeader = new TextEncoder().encode(protectedHeader);
         cek = await subtle.unwrapKey("raw", base64urlToBuffer(
             cek
         ), jwk, "AES-KW", "AES-CBC", true, [
@@ -3178,16 +3241,18 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         iv = base64urlToBuffer(iv);
         ciphertext = base64urlToBuffer(ciphertext);
         // B.5.  Create Input to HMAC Computation
-        tag = new Uint8Array(header.length + iv.length + ciphertext.length + 8);
+        tag = new Uint8Array(
+            protectedHeader.length + iv.length + ciphertext.length + 8
+        );
         ii = 0;
         [
-            header, iv, ciphertext, [
-                // 64-bit length of header
+            protectedHeader, iv, ciphertext, [
+                // 64-bit length of protectedHeader
                 0, 0, 0, 0,
-                (header.length >>> 21) & 0xff,
-                (header.length >> 13) & 0xff,
-                (header.length >> 5) & 0xff,
-                (header.length << 3) & 0xff
+                (protectedHeader.length >>> 21) & 0xff,
+                (protectedHeader.length >> 13) & 0xff,
+                (protectedHeader.length >> 5) & 0xff,
+                (protectedHeader.length << 3) & 0xff
             ]
         ].forEach(function (elem) {
             jj = 0;
@@ -3221,7 +3286,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         "unwrapKey", "wrapKey"
     ]);
     jwe = (
-        // header
+        // protectedHeader
         "eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0."
         // cek
         + "6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ."
@@ -3232,7 +3297,9 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         // tag
         + "U0m_YmjN04DJvceFICbCVQ"
     );
-    assertJsonEqual(await decrypt(jwe, jwk), "Live long and prosper.");
+    assertJsonEqual(await decrypt(jwk, jwe), "Live long and prosper.");
+    jwe = await encrypt(jwk, "Live long and prosper.");
+    assertJsonEqual(await decrypt(jwk, jwe), "Live long and prosper.");
 }());
 </script>
 
