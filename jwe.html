@@ -3068,6 +3068,113 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     assertJsonEqual(plaintext, "Live long and prosper.");
     globalThis.debugInline(plaintext);
 }());
+
+
+
+(function () {
+    "use strict";
+    let base64urlFromBuffer;
+    let base64urlToBuffer;
+    let decrypt;
+    let encrypt;
+    base64urlFromBuffer = function (buf) {
+        let base64url;
+        let ii;
+        base64url = "";
+        ii = 0;
+        while (ii < buf.byteLength) {
+            base64url += String.fromCharCode(buf[ii]);
+            ii += 1;
+        }
+        return globalThis.btoa(base64url).replace((
+            /\+/g
+        ), "-").replace((
+            /\//g
+        ), "_").replace((
+            /\=*?$/
+        ), "");
+    };
+    base64urlToBuffer = function (base64url) {
+        return Uint8Array.from(globalThis.atob(base64url.replace((
+            /-/g
+        ), "+").replace((
+            /_/g
+        ), "/").replace((
+            /\=*?$/
+        ), "")), function (chr) {
+            return chr.charCodeAt(0);
+        });
+    };
+    decrypt = function (jwe) {
+        let cek;
+        let ciphertext;
+        let header;
+        let ii;
+        let iv;
+        let jj;
+        let jwk;
+        let plaintext;
+        let subtle;
+        let tag;
+        subtle = globalThis.crypto.subtle;
+        // A.3.8.  Validation
+        [
+            header, cek, iv, ciphertext
+        ] = jwe.split(".");
+        header = new TextEncoder().encode(header);
+        cek = await subtle.unwrapKey("raw", base64urlToBuffer(
+            cek
+        ), jwk, "AES-KW", "AES-CBC", true, [
+            "decrypt"
+        ]);
+        cek = new Uint8Array(await subtle.exportKey("raw", cek));
+        iv = base64urlToBuffer(iv);
+        ciphertext = base64urlToBuffer(ciphertext);
+        // B.5.  Create Input to HMAC Computation
+        tag = new Uint8Array(header.length + iv.length + ciphertext.length + 8);
+        ii = 0;
+        [
+            header, iv, ciphertext, [
+                // 64-bit length of header
+                0, 0, 0, 0,
+                (header.length >>> 21) & 0xff,
+                (header.length >> 13) & 0xff,
+                (header.length >> 5) & 0xff,
+                (header.length << 3) & 0xff
+            ]
+        ].forEach(function (elem) {
+            jj = 0;
+            while (jj < elem.length) {
+                tag[ii] = elem[jj];
+                ii += 1;
+                jj += 1;
+            }
+        });
+        // B.6.  Compute HMAC Value
+        jwk = await subtle.importKey("raw", cek.slice(0, 16), {
+            hash: "SHA-256",
+            name: "HMAC"
+        }, false, [
+            "sign"
+        ]);
+        tag = new Uint8Array(await subtle.sign({
+            name: "HMAC"
+        }, jwk, tag));
+        // B.7.  Truncate HMAC Value to Create Authentication Tag
+        tag = tag.slice(0, 16);
+        tag = base64urlFromBuffer(tag);
+        // decrypt
+        jwk = await subtle.importKey("raw", cek.slice(16), "AES-CBC", true, [
+            "decrypt"
+        ]);
+        plaintext = await subtle.decrypt({
+            iv,
+            name: "AES-CBC"
+        }, jwk, ciphertext);
+        plaintext = new TextDecoder().decode(plaintext);
+        return plaintext;
+    };
+}());
 </script>
 
 </body>
