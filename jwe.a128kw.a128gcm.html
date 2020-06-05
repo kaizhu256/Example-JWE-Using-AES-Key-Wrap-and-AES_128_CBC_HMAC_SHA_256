@@ -4867,7 +4867,6 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
     let cryptoDecrypt;
     let cryptoEncrypt;
     let jwe;
-    let jwk;
     assertJsonEqual = function (aa, bb) {
     /*
      * this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
@@ -4966,6 +4965,12 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
             typeof tag === "string",
             "jwe failed decryption - " + jwe
         );
+        kek = await crypto.subtle.importKey("jwk", {
+            "kty": "oct",
+            "k": kek
+        }, "AES-KW", false, [
+            "unwrapKey"
+        ]);
         cek = await crypto.subtle.unwrapKey(
             "raw",
             base64urlToBuffer(cek),
@@ -4986,13 +4991,21 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
             iv: base64urlToBuffer(iv),
             name: "AES-GCM"
         }, cek, ciphertext));
-        tmp = new TextDecoder().decode(tmp);
-        return tmp;
+        return new TextDecoder().decode(tmp);
     };
     cryptoEncrypt = async function (kek, plaintext, header, cek, iv) {
         let crypto;
         let tmp;
         crypto = globalThis.crypto;
+        // validate header
+        header = header || {
+            "alg": "A128KW",
+            "enc": "A128GCM"
+        };
+        assertOrThrow(
+            header.alg === "A128KW" && header.enc === "A128GCM",
+            "jwe failed encryption - " + jwe
+        );
         kek = await crypto.subtle.importKey("jwk", {
             "kty": "oct",
             "k": kek
@@ -5001,14 +5014,6 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         ]);
         cek = cek || base64urlFromBuffer(
             crypto.getRandomValues(new Uint8Array(32))
-        );
-        header = header || {
-            "alg": "A128KW",
-            "enc": "A128GCM"
-        };
-        assertOrThrow(
-            header.alg === "A128KW" && header.enc === "A128GCM",
-            "jwe failed encryption - " + jwe
         );
         header = base64urlFromBuffer(
             new TextEncoder().encode(JSON.stringify(header))
@@ -5071,6 +5076,8 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         // tag - Authentication tag
         + "ER7MWJZ1FBI_NKvn7Zb1Lw"
     ));
+    jwe = await cryptoDecrypt("GZy6sIZ6wl9NJOKB-jnmVQ", jwe);
+    console.error("decrypted jwe - " + jwe);
 }());
 </script>
 
