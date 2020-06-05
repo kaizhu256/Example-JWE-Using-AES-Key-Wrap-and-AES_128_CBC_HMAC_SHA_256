@@ -2782,8 +2782,27 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     /*
      * this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
      */
-        aa = JSON.stringify(aa);
-        bb = JSON.stringify(bb);
+        let objectKeysSort;
+        objectKeysSort = function (obj) {
+        /*
+         * this function will recursively sort keys in <obj>
+         */
+            let sorted;
+            if (!(typeof obj === "object" && obj)) {
+                return obj;
+            }
+            if (Array.isArray(obj)) {
+                return obj.map(objectKeysSort);
+            }
+            sorted = {};
+            // recursively sort keys in obj
+            Object.keys(obj).sort().forEach(function (key) {
+                sorted[key] = objectKeysSort(obj[key]);
+            });
+            return sorted;
+        };
+        aa = JSON.stringify(objectKeysSort(aa));
+        bb = JSON.stringify(objectKeysSort(bb));
         if (aa !== bb) {
             throw new Error(JSON.stringify(aa) + " !== " + JSON.stringify(bb));
         }
@@ -3086,8 +3105,27 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     /*
      * this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
      */
-        aa = JSON.stringify(aa);
-        bb = JSON.stringify(bb);
+        let objectKeysSort;
+        objectKeysSort = function (obj) {
+        /*
+         * this function will recursively sort keys in <obj>
+         */
+            let sorted;
+            if (!(typeof obj === "object" && obj)) {
+                return obj;
+            }
+            if (Array.isArray(obj)) {
+                return obj.map(objectKeysSort);
+            }
+            sorted = {};
+            // recursively sort keys in obj
+            Object.keys(obj).sort().forEach(function (key) {
+                sorted[key] = objectKeysSort(obj[key]);
+            });
+            return sorted;
+        };
+        aa = JSON.stringify(objectKeysSort(aa));
+        bb = JSON.stringify(objectKeysSort(bb));
         if (aa !== bb) {
             throw new Error(JSON.stringify(aa) + " !== " + JSON.stringify(bb));
         }
