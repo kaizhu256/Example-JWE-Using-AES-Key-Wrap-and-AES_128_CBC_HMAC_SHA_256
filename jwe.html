@@ -3009,7 +3009,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         // tag
         + "U0m_YmjN04DJvceFICbCVQ"
     ));
-    globalThis.debugInline(jwe);
+    console.error("jwe - " + jwe);
     // A.3.8.  Validation
     [
         header, cek, iv, ciphertext
@@ -3067,7 +3067,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     }, jwk, ciphertext);
     plaintext = new TextDecoder().decode(plaintext);
     assertJsonEqual(plaintext, "Live long and prosper.");
-    globalThis.debugInline(plaintext);
+    console.error("plaintext - " + plaintext);
 }());
 
 
@@ -3159,11 +3159,11 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     };
     encrypt = async function (jwk, plaintext, iv) {
         let cek;
-        let compact;
+        let ciphertext;
         let crypto;
         let tmp;
         crypto = globalThis.crypto;
-        compact = "";
+        ciphertext = "";
         // https://tools.ietf.org/html/rfc7516#appendix-A.3
         // A.3.  Example JWE Using AES Key Wrap and AES_128_CBC_HMAC_SHA_256
         plaintext = new TextEncoder().encode(plaintext);
@@ -3177,7 +3177,7 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
             /\=*?$/
         ), "");
         // jwe BASE64URL(UTF8(JWE Protected Header) - protected
-        compact += tmp;
+        ciphertext += tmp;
         // A.3.2.  Content Encryption Key (CEK)
         cek = crypto.getRandomValues(new Uint8Array(32));
         tmp = await crypto.subtle.importKey("raw", cek, {
@@ -3188,11 +3188,11 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         tmp = await crypto.subtle.wrapKey("raw", tmp, jwk, "AES-KW");
         tmp = base64urlFromBuffer(new Uint8Array(tmp));
         // jwe BASE64URL(JWE Encrypted Key) - cek
-        compact += "." + tmp;
+        ciphertext += "." + tmp;
         // A.3.4.  Initialization Vector
         iv = iv || crypto.getRandomValues(new Uint8Array(16));
         // jwe BASE64URL(JWE Initialization Vector) - iv
-        compact += "." + base64urlFromBuffer(iv);
+        ciphertext += "." + base64urlFromBuffer(iv);
         // A.3.5.  Additional Authenticated Data
         // A.3.6.  Content Encryption
         // Appendix B.  Example AES_128_CBC_HMAC_SHA_256 Computation
@@ -3208,11 +3208,11 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
             name: "AES-CBC"
         }, tmp, plaintext)));
         // jwe BASE64URL(JWE Ciphertext) - ciphertext
-        compact += "." + tmp;
-        tmp = await sign(jwk, compact);
+        ciphertext += "." + tmp;
+        tmp = await sign(jwk, ciphertext);
         // jwe BASE64URL(JWE Authentication Tag) - tag
-        compact += "." + tmp;
-        return compact;
+        ciphertext += "." + tmp;
+        return ciphertext;
     };
     sign = async function (jwk, jwe) {
         let cek;
@@ -3298,17 +3298,8 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
         + "U0m_YmjN04DJvceFICbCVQ"
     );
     assertJsonEqual(await decrypt(jwk, jwe), "Live long and prosper.");
-    jwk = {
-        "alg": "A128KWGCM",
-        "k": "GawgguFyGrWKav7AX4VKUg",
-        "kty": "oct"
-    };
-    jwk = await globalThis.crypto.subtle.importKey("jwk", jwk, {
-        name: "AES-KW"
-    }, false, [
-        "unwrapKey", "wrapKey"
-    ]);
     jwe = await encrypt(jwk, "Live long and prosper.");
+    console.error("jwe - " + jwe);
     assertJsonEqual(await decrypt(jwk, jwe), "Live long and prosper.");
 }());
 </script>
