@@ -4975,7 +4975,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         [
             header, cek, iv, ciphertext, tag
         ] = jwe.split(".");
-        cek = base64urlToBuffer(cek);
+        cek = debugInline(base64urlToBuffer(cek));
         ciphertext = base64urlToBuffer(ciphertext);
         iv = base64urlToBuffer(iv);
         tag = base64urlToBuffer(tag);
@@ -5027,13 +5027,17 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
             "wrapKey"
         ]);
         cek = cek || base64urlFromBuffer(
-            crypto.getRandomValues(new Uint8Array(32))
+            crypto.getRandomValues(new Uint8Array(
+                header.enc !== "A256GCM"
+                ? 16
+                : 32
+            ))
         );
         header = base64urlFromBuffer(
             new TextEncoder().encode(JSON.stringify(header))
         );
         iv = iv || base64urlFromBuffer(
-            crypto.getRandomValues(new Uint8Array(18))
+            crypto.getRandomValues(new Uint8Array(12))
         );
         cek = await crypto.subtle.importKey("raw", base64urlToBuffer(cek), {
             name: "AES-GCM"
