@@ -4967,15 +4967,20 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         let tag;
         let tmp;
         crypto = globalThis.crypto;
-        // rgx-check jwe
+        // validate jwe
         assertOrThrow((
-            /^[\w\-]+?\.[\w\-]+?\.[\w\-]+?\.[\w\-]+?\.[\w\-]+?$/
+            /^[\w\-]+?\.[\w\-]+?\.[\w\-]+?\.[\w\-]*?\.[\w\-]+?$/
         ).test(jwe), "jwe failed encryption - " + jwe);
+        // init cek, ciphertext, header, iv, tag
         [
             header, cek, iv, ciphertext, tag
-        ] = jwe.split(".").map(base64urlToBuffer);
+        ] = jwe.split(".");
+        cek = base64urlToBuffer(cek);
+        ciphertext = base64urlToBuffer(ciphertext);
+        iv = base64urlToBuffer(iv);
+        tag = base64urlToBuffer(tag);
         // validate header
-        tmp = JSON.parse(new TextDecoder().decode(header));
+        tmp = JSON.parse(new TextDecoder().decode(base64urlToBuffer(header)));
         assertOrThrow((
             (tmp.alg === "A128KW" && tmp.enc === "A128GCM")
             || (tmp.alg === "A256KW" && tmp.enc === "A256GCM")
@@ -4996,9 +5001,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         ciphertext.set(tmp);
         ciphertext.set(tag, tmp.length);
         tmp = new Uint8Array(await crypto.subtle.decrypt({
-            additionalData: new TextEncoder().encode(
-                base64urlFromBuffer(header)
-            ),
+            additionalData: new TextEncoder().encode(header),
             iv,
             name: "AES-GCM"
         }, cek, ciphertext));
@@ -5118,6 +5121,8 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
     ));
     myJwe = await cryptoEncrypt(myKek, "");
     console.error("encrypted jwe - " + myJwe);
+    myPlaintext = await cryptoDecrypt(myKek, myJwe);
+    console.error("decrypted jwe - " + myPlaintext);
 }());
 </script>
 
