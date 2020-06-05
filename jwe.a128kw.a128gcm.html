@@ -5014,31 +5014,26 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
             "alg": "A256KW",
             "enc": "A256GCM"
         };
-        // validate header
-        assertOrThrow((
-            (header.alg === "A128KW" && header.enc === "A128GCM")
-            || (header.alg === "A256KW" && header.enc === "A256GCM")
-        ), "jwe failed validation");
-        kek = await crypto.subtle.importKey("jwk", {
-            "kty": "oct",
-            "k": kek
-        }, "AES-KW", false, [
-            "wrapKey"
-        ]);
-        cek = cek || base64urlFromBuffer(
+        kek = base64urlToBuffer(kek);
+        cek = base64urlToBuffer(cek || base64urlFromBuffer(
             crypto.getRandomValues(new Uint8Array(
                 header.enc !== "A256GCM"
                 ? 16
                 : 32
             ))
-        );
+        ));
+        // validate header
+        cryptoValidateHeader(header, kek, cek, 0);
+        kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
+            "wrapKey"
+        ]);
         header = base64urlFromBuffer(
             new TextEncoder().encode(JSON.stringify(header))
         );
         iv = iv || base64urlFromBuffer(
             crypto.getRandomValues(new Uint8Array(12))
         );
-        cek = await crypto.subtle.importKey("raw", base64urlToBuffer(cek), {
+        cek = await crypto.subtle.importKey("raw", cek, {
             name: "AES-GCM"
         }, true, [
             "encrypt"
@@ -5059,7 +5054,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
             + "." + base64urlFromBuffer(tmp.subarray(-16))
         );
     };
-    cryptoValidateHeader = function (header, kek, cek, cekPadding = 0) {
+    cryptoValidateHeader = function (header, kek, cek, cekPadding) {
         assertOrThrow((
             (header.alg === "A128KW" && header.enc === "A128GCM")
             || (header.alg === "A256KW" && header.enc === "A256GCM")
