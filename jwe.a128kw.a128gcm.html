@@ -4854,6 +4854,13 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
     } catch (ignore) {
         console.error("foo");
     }
+    assertJsonEqual(new TextDecoder().decode(plaintext), (
+        "You can trust us to stick with you through thick and "
+        + "thin\u2013to the bitter end. And you can trust us to "
+        + "keep any secret of yours\u2013closer than you keep it "
+        + "yourself. But you cannot trust us to let you face trouble "
+        + "alone, and go off without a word. We are your friends, Frodo."
+    ));
 }());
 
 
@@ -4867,6 +4874,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
     let cryptoDecrypt;
     let cryptoEncrypt;
     let jwe;
+    let plaintext;
     assertJsonEqual = function (aa, bb) {
     /*
      * this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
@@ -5084,8 +5092,15 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         // tag - Authentication tag
         + "ER7MWJZ1FBI_NKvn7Zb1Lw"
     ));
-    jwe = await cryptoDecrypt("GZy6sIZ6wl9NJOKB-jnmVQ", jwe);
-    console.error("decrypted jwe - " + jwe);
+    plaintext = await cryptoDecrypt("GZy6sIZ6wl9NJOKB-jnmVQ", jwe);
+    console.error("decrypted jwe - " + plaintext);
+    assertJsonEqual(plaintext, (
+        "You can trust us to stick with you through thick and "
+        + "thin\u2013to the bitter end. And you can trust us to "
+        + "keep any secret of yours\u2013closer than you keep it "
+        + "yourself. But you cannot trust us to let you face trouble "
+        + "alone, and go off without a word. We are your friends, Frodo."
+    ));
 }());
 </script>
 
