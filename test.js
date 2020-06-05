@@ -86,6 +86,34 @@
             )
         );
     };
+    local.base64urlFromBuffer = function (buf) {
+        let base64url;
+        let ii;
+        base64url = "";
+        ii = 0;
+        while (ii < buf.byteLength) {
+            base64url += String.fromCharCode(buf[ii]);
+            ii += 1;
+        }
+        return globalThis.btoa(base64url).replace((
+            /\+/g
+        ), "-").replace((
+            /\//g
+        ), "_").replace((
+            /\=*?$/
+        ), "");
+    };
+    local.base64urlToBuffer = function (base64url) {
+        return Uint8Array.from(globalThis.atob(base64url.replace((
+            /-/g
+        ), "+").replace((
+            /_/g
+        ), "/").replace((
+            /\=*?$/
+        ), "")), function (chr) {
+            return chr.charCodeAt(0);
+        });
+    };
     local.coalesce = function (...argList) {
     /*
      * this function will coalesce null, undefined, or "" in <argList>
@@ -173,8 +201,16 @@
 
 (async function () {
 "use strict";
+let atag;
+let ciphertext;
+let crypto;
+let jwk;
 let local;
+let plaintext;
+let tmp;
 local = globalThis.globalLocal;
+crypto = globalThis.crypto;
+// https://tools.ietf.org/id/draft-ietf-jose-cookbook-02.html#jwe-dir_gcm
 // 4.6. Direct Encryption using AES-GCM
 // This example illustrates encrypting content using a previously exchanged key
 // directly and the "A128GCM" (AES-GCM) content encryption algorithm.
@@ -230,6 +266,50 @@ local = globalThis.globalLocal;
 // Protected JWE header (Figure 108) as authenticated data
 // produces the following:
 
+jwk = await crypto.subtle.importKey("jwk", {
+    "kty": "oct",
+    "kid": "77c7e2b8-6e13-45cf-8672-617b5b45243a",
+    "use": "enc",
+    "alg": "A128GCM",
+    "k": "XctOhJAkA-pD9Lh7ZgW_2A"
+}, {
+    name: "AES-GCM"
+}, true, [
+    "decrypt", "encrypt"
+]);
+plaintext = (
+    "You can trust us to stick with you through thick and "
+    + "thin\u2013to the bitter end. And you can trust us to "
+    + "keep any secret of yours\u2013closer than you keep it "
+    + "yourself. But you cannot trust us to let you face trouble "
+    + "alone, and go off without a word. We are your friends, Frodo."
+);
+tmp = new Uint8Array(await crypto.subtle.encrypt(
+    {
+        additionalData: new TextEncoder().encode(
+            "eyJhbGciOiJkaXIiLCJraWQiOiI3N2M3ZTJiOC02ZTEzLTQ1Y2YtODY3Mi02MT"
+            + "diNWI0NTI0M2EiLCJlbmMiOiJBMTI4R0NNIn0"
+        ),
+        iv: local.base64urlToBuffer("refa467QzzKx6QAB"),
+        name: "AES-GCM",
+    },
+    jwk,
+    new TextEncoder().encode(plaintext)
+));
+atag = tmp.subarray(-16);
+ciphertext = tmp.subarray(0, -16);
+local.assertJsonEqual(local.base64urlFromBuffer(ciphertext), (
+    "JW_i_f52hww_ELQPGaYyeAB6HYGcR559l9TYnSovc23XJoBcW29rHP8yZOZG7Y"
+    + "hLpT1bjFuvZPjQS-m0IFtVcXkZXdH_lr_FrdYt9HRUYkshtrMmIUAyGmUnd9zM"
+    + "DB2n0cRDIHAzFVeJUDxkUwVAE7_YGRPdcqMyiBoCO-FBdE-Nceb4h3-FtBP-c_"
+    + "BIwCPTjb9o0SbdcdREEMJMyZBH8ySWMVi1gPD9yxi-aQpGbSv_F9N4IZAxscj5"
+    + "g-NJsUPbjk29-s7LJAGb15wEBtXphVCgyy53CoIKLHHeJHXex45Uz9aKZSRSIn"
+    + "ZI-wjsY0yu3cT4_aQ3i1o-tiE-F8Ios61EKgyIQ4CWao8PFMj8TTnp"
+));
+local.assertJsonEqual(local.base64urlFromBuffer(atag), (
+    "vbb32Xvllea2OtmHAdccRQ"
+));
+
 // Ciphertext from Figure 109.
 // Authentication tag from Figure 110.
 // JW_i_f52hww_ELQPGaYyeAB6HYGcR559l9TYnSovc23XJoBcW29rHP8yZOZG7Y
@@ -284,4 +364,24 @@ local = globalThis.globalLocal;
 // "tag": "vbb32Xvllea2OtmHAdccRQ"
 // }
 // Figure 112: JSON Serialization
+
+plaintext = new Uint8Array(await crypto.subtle.decrypt(
+    {
+        additionalData: new TextEncoder().encode(
+            "eyJhbGciOiJkaXIiLCJraWQiOiI3N2M3ZTJiOC02ZTEzLTQ1Y2YtODY3Mi02MT"
+            + "diNWI0NTI0M2EiLCJlbmMiOiJBMTI4R0NNIn0"
+        ),
+        iv: local.base64urlToBuffer("refa467QzzKx6QAB"),
+        name: "AES-GCM",
+    },
+    jwk,
+    tmp
+));
+local.assertJsonEqual(new TextDecoder().decode(plaintext), (
+    "You can trust us to stick with you through thick and "
+    + "thin\u2013to the bitter end. And you can trust us to "
+    + "keep any secret of yours\u2013closer than you keep it "
+    + "yourself. But you cannot trust us to let you face trouble "
+    + "alone, and go off without a word. We are your friends, Frodo."
+));
 }());
