@@ -4958,12 +4958,20 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         let tag;
         let tmp;
         crypto = globalThis.crypto;
+        // rgx-check jwe
+        assertOrThrow((
+            /./
+        ).test(jwe), "jwe failed encryption - " + jwe);
         [
             header, cek, iv, ciphertext, tag
         ] = jwe.split(".");
+        // validate header
+        tmp = JSON.parse(
+            new TextDecoder().decode(base64urlToBuffer(header))
+        );
         assertOrThrow(
-            typeof tag === "string",
-            "jwe failed decryption - " + jwe
+            tmp.alg === "A128KW" && tmp.enc === "A128GCM",
+            "jwe failed encryption - " + jwe
         );
         kek = await crypto.subtle.importKey("jwk", {
             "kty": "oct",
@@ -4997,14 +5005,14 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         let crypto;
         let tmp;
         crypto = globalThis.crypto;
-        // validate header
         header = header || {
             "alg": "A128KW",
             "enc": "A128GCM"
         };
+        // validate header
         assertOrThrow(
             header.alg === "A128KW" && header.enc === "A128GCM",
-            "jwe failed encryption - " + jwe
+            "jwe failed encryption - " + JSON.stringify(header)
         );
         kek = await crypto.subtle.importKey("jwk", {
             "kty": "oct",
