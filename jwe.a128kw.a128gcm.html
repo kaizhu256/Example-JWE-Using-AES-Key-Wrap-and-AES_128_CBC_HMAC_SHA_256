@@ -4685,17 +4685,18 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         let objectKeysSort;
         objectKeysSort = function (obj) {
         /*
-         * this function will recursively sort keys in <obj>
+         * this function will return copy of <obj> with keys sorted recursively
          */
             let sorted;
             if (!(typeof obj === "object" && obj)) {
                 return obj;
             }
+            // return copy of list with child-keys sorted recursively
             if (Array.isArray(obj)) {
                 return obj.map(objectKeysSort);
             }
+            // return copy of obj with keys sorted recursively
             sorted = {};
-            // recursively sort keys in obj
             Object.keys(obj).sort().forEach(function (key) {
                 sorted[key] = objectKeysSort(obj[key]);
             });
@@ -4805,6 +4806,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         + "." + ciphertext
         + "." + tag
     );
+    console.error("encrypted jwe - " + jwe);
     assertJsonEqual(jwe, (
         // protectedHeader - Protected JWE header
         "eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC"
@@ -4839,11 +4841,12 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         "decrypt", "encrypt"
     ]);
     try {
-        plaintext = await crypto.subtle.decrypt({
+        plaintext = new Uint8Array(await crypto.subtle.decrypt({
             additionalData: new TextEncoder().encode(protectedHeader),
             iv: base64urlToBuffer(iv),
             name: "AES-GCM"
-        }, cek, tmp);
+        }, cek, tmp));
+        console.error("decrypted jwe - " + new TextDecoder().decode(plaintext));
     } catch (ignore) {
         console.error("foo");
     }
@@ -4856,17 +4859,36 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
     //!! let assertJsonEqual;
     //!! let base64urlFromBuffer;
     //!! let base64urlToBuffer;
-    //!! let decrypt;
-    //!! let encrypt;
+    //!! let cryptoDecrypt;
+    //!! let cryptoEncrypt;
     //!! let jwe;
     //!! let jwk;
-    //!! let sign;
     //!! assertJsonEqual = function (aa, bb) {
     //!! /*
      //!! * this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
      //!! */
-        //!! aa = JSON.stringify(aa);
-        //!! bb = JSON.stringify(bb);
+        //!! let objectKeysSort;
+        //!! objectKeysSort = function (obj) {
+        //!! /*
+         //!! * this function will return copy of <obj> with keys sorted recursively
+         //!! */
+            //!! let sorted;
+            //!! if (!(typeof obj === "object" && obj)) {
+                //!! return obj;
+            //!! }
+            //!! // return copy of list with child-keys sorted recursively
+            //!! if (Array.isArray(obj)) {
+                //!! return obj.map(objectKeysSort);
+            //!! }
+            //!! // return copy of obj with keys sorted recursively
+            //!! sorted = {};
+            //!! Object.keys(obj).sort().forEach(function (key) {
+                //!! sorted[key] = objectKeysSort(obj[key]);
+            //!! });
+            //!! return sorted;
+        //!! };
+        //!! aa = JSON.stringify(objectKeysSort(aa));
+        //!! bb = JSON.stringify(objectKeysSort(bb));
         //!! if (aa !== bb) {
             //!! throw new Error(JSON.stringify(aa) + " !== " + JSON.stringify(bb));
         //!! }
@@ -4899,7 +4921,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
             //!! return chr.charCodeAt(0);
         //!! });
     //!! };
-    //!! decrypt = async function (jwk, jwe) {
+    //!! cryptoDecrypt = async function (jwk, jwe) {
         //!! let cek;
         //!! let ciphertext;
         //!! let crypto;
@@ -4936,7 +4958,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
             //!! name: "AES-CBC"
         //!! }, jwk, ciphertext));
     //!! };
-    //!! encrypt = async function (jwk, plaintext, iv) {
+    //!! cryptoEncrypt = async function (jwk, plaintext, iv) {
         //!! let cek;
         //!! let ciphertext;
         //!! let crypto;
@@ -4993,67 +5015,6 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         //!! ciphertext += "." + tmp;
         //!! return ciphertext;
     //!! };
-    //!! sign = async function (jwk, jwe) {
-        //!! let cek;
-        //!! let ciphertext;
-        //!! let crypto;
-        //!! let ii;
-        //!! let iv;
-        //!! let jj;
-        //!! let protectedHeader;
-        //!! let tag;
-        //!! crypto = globalThis.crypto;
-        //!! // A.3.8.  Validation
-        //!! [
-            //!! protectedHeader, cek, iv, ciphertext
-        //!! ] = jwe.split(".");
-        //!! if (typeof ciphertext !== "string") {
-            //!! throw new Error("jwe failed signing - " + jwe);
-        //!! }
-        //!! protectedHeader = new TextEncoder().encode(protectedHeader);
-        //!! cek = await crypto.subtle.unwrapKey("raw", base64urlToBuffer(
-            //!! cek
-        //!! ), jwk, "AES-KW", "AES-CBC", true, [
-            //!! "decrypt"
-        //!! ]);
-        //!! cek = new Uint8Array(await crypto.subtle.exportKey("raw", cek));
-        //!! iv = base64urlToBuffer(iv);
-        //!! ciphertext = base64urlToBuffer(ciphertext);
-        //!! // B.5.  Create Input to HMAC Computation
-        //!! tag = new Uint8Array(
-            //!! protectedHeader.length + iv.length + ciphertext.length + 8
-        //!! );
-        //!! ii = 0;
-        //!! [
-            //!! protectedHeader, iv, ciphertext, [
-                //!! // 64-bit length of protectedHeader
-                //!! 0, 0, 0, 0,
-                //!! (protectedHeader.length >>> 21) & 0xff,
-                //!! (protectedHeader.length >> 13) & 0xff,
-                //!! (protectedHeader.length >> 5) & 0xff,
-                //!! (protectedHeader.length << 3) & 0xff
-            //!! ]
-        //!! ].forEach(function (elem) {
-            //!! jj = 0;
-            //!! while (jj < elem.length) {
-                //!! tag[ii] = elem[jj];
-                //!! ii += 1;
-                //!! jj += 1;
-            //!! }
-        //!! });
-        //!! // B.6.  Compute HMAC Value
-        //!! jwk = await crypto.subtle.importKey("raw", cek.subarray(0, 16), {
-            //!! hash: "SHA-256",
-            //!! name: "HMAC"
-        //!! }, false, [
-            //!! "sign"
-        //!! ]);
-        //!! tag = new Uint8Array(await crypto.subtle.sign({
-            //!! name: "HMAC"
-        //!! }, jwk, tag));
-        //!! // B.7.  Truncate HMAC Value to Create Authentication Tag
-        //!! return base64urlFromBuffer(tag.subarray(0, 16));
-    //!! };
     //!! jwk = {
         //!! "alg": "A128KW",
         //!! "k": "GawgguFyGrWKav7AX4VKUg",
@@ -5076,10 +5037,10 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         //!! // tag
         //!! + "U0m_YmjN04DJvceFICbCVQ"
     //!! );
-    //!! assertJsonEqual(await decrypt(jwk, jwe), "Live long and prosper.");
-    //!! jwe = await encrypt(jwk, "Live long and prosper.");
+    //!! assertJsonEqual(await cryptoDecrypt(jwk, jwe), "Live long and prosper.");
+    //!! jwe = await cryptoEncrypt(jwk, "Live long and prosper.");
     //!! console.error("jwe - " + jwe);
-    //!! assertJsonEqual(await decrypt(jwk, jwe), "Live long and prosper.");
+    //!! assertJsonEqual(await cryptoDecrypt(jwk, jwe), "Live long and prosper.");
 //!! }());
 </script>
 
