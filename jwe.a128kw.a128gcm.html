@@ -4806,7 +4806,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         + "." + ciphertext
         + "." + tag
     );
-    console.error("encrypted jwe - " + jwe);
+    console.log("encrypted jwe - " + jwe);
     assertJsonEqual(jwe, (
         // protectedHeader - Protected JWE header
         "eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC"
@@ -4850,9 +4850,9 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
             iv: base64urlToBuffer(iv),
             name: "AES-GCM"
         }, cek, ciphertext));
-        console.error("decrypted jwe - " + new TextDecoder().decode(plaintext));
+        console.log("decrypted jwe - " + new TextDecoder().decode(plaintext));
     } catch (ignore) {
-        console.error("foo");
+        console.log("foo");
     }
     assertJsonEqual(new TextDecoder().decode(plaintext), (
         "You can trust us to stick with you through thick and "
@@ -4959,6 +4959,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         });
     };
     cryptoDecrypt = async function (kek, jwe) {
+        let aad;
         let cek;
         let ciphertext;
         let crypto;
@@ -4974,17 +4975,14 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         // init cek, ciphertext, header, iv, tag
         [
             header, cek, iv, ciphertext, tag
-        ] = jwe.split(".");
-        cek = debugInline(base64urlToBuffer(cek));
-        ciphertext = base64urlToBuffer(ciphertext);
-        iv = base64urlToBuffer(iv);
-        tag = base64urlToBuffer(tag);
+        ] = jwe.split(".").map(base64urlToBuffer);
+        aad = new TextEncoder().encode(base64urlFromBuffer(header));
         // validate header
-        tmp = JSON.parse(new TextDecoder().decode(base64urlToBuffer(header)));
+        header = JSON.parse(new TextDecoder().decode(header));
         assertOrThrow((
-            (tmp.alg === "A128KW" && tmp.enc === "A128GCM")
-            || (tmp.alg === "A256KW" && tmp.enc === "A256GCM")
-        ), "jwe failed encryption - " + JSON.stringify(tmp));
+            (header.alg === "A128KW" && header.enc === "A128GCM")
+            || (header.alg === "A256KW" && header.enc === "A256GCM")
+        ), "jwe failed encryption - " + JSON.stringify(header));
         kek = await crypto.subtle.importKey("jwk", {
             "kty": "oct",
             "k": kek
@@ -5001,7 +4999,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         ciphertext.set(tmp);
         ciphertext.set(tag, tmp.length);
         tmp = new Uint8Array(await crypto.subtle.decrypt({
-            additionalData: new TextEncoder().encode(header),
+            additionalData: aad,
             iv,
             name: "AES-GCM"
         }, cek, ciphertext));
@@ -5071,7 +5069,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         "kid": "81b20965-8332-43d9-a468-82160ad91ac8",
         "enc": "A128GCM"
     }, "aY5_Ghmk9KxWPBLu_glx1w", "Qx0pmsDa8KnJc9Jo");
-    console.error("encrypted jwe - " + myJwe);
+    console.log("encrypted jwe - " + myJwe);
     assertJsonEqual(myJwe, (
         // protectedHeader - Protected JWE header
         "eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC"
@@ -5095,7 +5093,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         + "ER7MWJZ1FBI_NKvn7Zb1Lw"
     ));
     myPlaintext = await cryptoDecrypt("GZy6sIZ6wl9NJOKB-jnmVQ", myJwe);
-    console.error("decrypted jwe - " + myPlaintext);
+    console.log("decrypted jwe - " + myPlaintext);
     assertJsonEqual(myPlaintext, (
         "You can trust us to stick with you through thick and "
         + "thin\u2013to the bitter end. And you can trust us to "
@@ -5113,9 +5111,9 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         + "yourself. But you cannot trust us to let you face trouble "
         + "alone, and go off without a word. We are your friends, Frodo."
     ));
-    console.error("encrypted jwe - " + myJwe);
+    console.log("encrypted jwe - " + myJwe);
     myPlaintext = await cryptoDecrypt(myKek, myJwe);
-    console.error("decrypted jwe - " + myPlaintext);
+    console.log("decrypted jwe - " + myPlaintext);
     assertJsonEqual(myPlaintext, (
         "You can trust us to stick with you through thick and "
         + "thin\u2013to the bitter end. And you can trust us to "
@@ -5124,9 +5122,9 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         + "alone, and go off without a word. We are your friends, Frodo."
     ));
     myJwe = await cryptoEncrypt(myKek, "");
-    console.error("encrypted jwe - " + myJwe);
+    console.log("encrypted jwe - " + myJwe);
     myPlaintext = await cryptoDecrypt(myKek, myJwe);
-    console.error("decrypted jwe - " + myPlaintext);
+    console.log("decrypted jwe - " + myPlaintext);
 }());
 </script>
 
