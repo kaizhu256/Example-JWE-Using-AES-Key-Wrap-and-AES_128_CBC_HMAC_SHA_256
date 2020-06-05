@@ -4840,12 +4840,16 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
     }, true, [
         "decrypt", "encrypt"
     ]);
+    tmp = base64urlToBuffer(ciphertext);
+    ciphertext = new Uint8Array(tmp.length + 16);
+    ciphertext.set(tmp);
+    ciphertext.set(base64urlToBuffer(tag), tmp.length);
     try {
         plaintext = new Uint8Array(await crypto.subtle.decrypt({
             additionalData: new TextEncoder().encode(protectedHeader),
             iv: base64urlToBuffer(iv),
             name: "AES-GCM"
-        }, cek, tmp));
+        }, cek, ciphertext));
         console.error("decrypted jwe - " + new TextDecoder().decode(plaintext));
     } catch (ignore) {
         console.error("foo");
@@ -4854,194 +4858,220 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
 
 
 
-//!! (async function () {
-    //!! "use strict";
-    //!! let assertJsonEqual;
-    //!! let base64urlFromBuffer;
-    //!! let base64urlToBuffer;
-    //!! let cryptoDecrypt;
-    //!! let cryptoEncrypt;
-    //!! let jwe;
-    //!! let jwk;
-    //!! assertJsonEqual = function (aa, bb) {
-    //!! /*
-     //!! * this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
-     //!! */
-        //!! let objectKeysSort;
-        //!! objectKeysSort = function (obj) {
-        //!! /*
-         //!! * this function will return copy of <obj> with keys sorted recursively
-         //!! */
-            //!! let sorted;
-            //!! if (!(typeof obj === "object" && obj)) {
-                //!! return obj;
-            //!! }
-            //!! // return copy of list with child-keys sorted recursively
-            //!! if (Array.isArray(obj)) {
-                //!! return obj.map(objectKeysSort);
-            //!! }
-            //!! // return copy of obj with keys sorted recursively
-            //!! sorted = {};
-            //!! Object.keys(obj).sort().forEach(function (key) {
-                //!! sorted[key] = objectKeysSort(obj[key]);
-            //!! });
-            //!! return sorted;
-        //!! };
-        //!! aa = JSON.stringify(objectKeysSort(aa));
-        //!! bb = JSON.stringify(objectKeysSort(bb));
-        //!! if (aa !== bb) {
-            //!! throw new Error(JSON.stringify(aa) + " !== " + JSON.stringify(bb));
-        //!! }
-    //!! };
-    //!! base64urlFromBuffer = function (buf) {
-        //!! let base64url;
-        //!! let ii;
-        //!! base64url = "";
-        //!! ii = 0;
-        //!! while (ii < buf.byteLength) {
-            //!! base64url += String.fromCharCode(buf[ii]);
-            //!! ii += 1;
-        //!! }
-        //!! return globalThis.btoa(base64url).replace((
-            //!! /\+/g
-        //!! ), "-").replace((
-            //!! /\//g
-        //!! ), "_").replace((
-            //!! /\=*?$/
-        //!! ), "");
-    //!! };
-    //!! base64urlToBuffer = function (base64url) {
-        //!! return Uint8Array.from(globalThis.atob(base64url.replace((
-            //!! /-/g
-        //!! ), "+").replace((
-            //!! /_/g
-        //!! ), "/").replace((
-            //!! /\=*?$/
-        //!! ), "")), function (chr) {
-            //!! return chr.charCodeAt(0);
-        //!! });
-    //!! };
-    //!! cryptoDecrypt = async function (jwk, jwe) {
-        //!! let cek;
-        //!! let ciphertext;
-        //!! let crypto;
-        //!! let header;
-        //!! let iv;
-        //!! let tag;
-        //!! crypto = globalThis.crypto;
-        //!! // A.3.8.  Validation
-        //!! [
-            //!! header, cek, iv, ciphertext, tag
-        //!! ] = jwe.split(".");
-        //!! if (typeof tag !== "string") {
-            //!! throw new Error("jwe failed validation - " + jwe);
-        //!! }
-        //!! cek = await crypto.subtle.unwrapKey("raw", base64urlToBuffer(
-            //!! cek
-        //!! ), jwk, "AES-KW", "AES-CBC", true, [
-            //!! "decrypt"
-        //!! ]);
-        //!! cek = new Uint8Array(await crypto.subtle.exportKey("raw", cek));
-        //!! iv = base64urlToBuffer(iv);
-        //!! ciphertext = base64urlToBuffer(ciphertext);
-        //!! if (await sign(jwk, jwe) !== tag) {
-            //!! throw new Error("jwe failed validation - " + jwe);
-        //!! }
-        //!! // decrypt
-        //!! jwk = await crypto.subtle.importKey("raw", cek.subarray(
-            //!! 16
-        //!! ), "AES-CBC", true, [
-            //!! "decrypt"
-        //!! ]);
-        //!! return new TextDecoder().decode(await crypto.subtle.decrypt({
-            //!! iv,
-            //!! name: "AES-CBC"
-        //!! }, jwk, ciphertext));
-    //!! };
-    //!! cryptoEncrypt = async function (jwk, plaintext, iv) {
-        //!! let cek;
-        //!! let ciphertext;
-        //!! let crypto;
-        //!! let tmp;
-        //!! crypto = globalThis.crypto;
-        //!! ciphertext = "";
-        //!! // https://tools.ietf.org/html/rfc7516#appendix-A.3
-        //!! // A.3.  Example JWE Using AES Key Wrap and AES_128_CBC_HMAC_SHA_256
-        //!! plaintext = new TextEncoder().encode(plaintext);
-        //!! // A.3.1.  JOSE Header
-        //!! tmp = "{\"alg\":\"A128KW\",\"enc\":\"A128CBC-HS256\"}";
-        //!! tmp = globalThis.btoa(tmp).replace((
-            //!! /\+/g
-        //!! ), "-").replace((
-            //!! /\//g
-        //!! ), "_").replace((
-            //!! /\=*?$/
-        //!! ), "");
-        //!! // jwe BASE64URL(UTF8(JWE Protected Header) - protected
-        //!! ciphertext += tmp;
-        //!! // A.3.2.  Content Encryption Key (CEK)
-        //!! cek = crypto.getRandomValues(new Uint8Array(32));
-        //!! tmp = await crypto.subtle.importKey("raw", cek, {
-            //!! name: "AES-CBC"
-        //!! }, true, [
-            //!! "encrypt"
-        //!! ]);
-        //!! tmp = await crypto.subtle.wrapKey("raw", tmp, jwk, "AES-KW");
-        //!! tmp = base64urlFromBuffer(new Uint8Array(tmp));
-        //!! // jwe BASE64URL(JWE Encrypted Key) - cek
-        //!! ciphertext += "." + tmp;
-        //!! // A.3.4.  Initialization Vector
-        //!! iv = iv || crypto.getRandomValues(new Uint8Array(16));
-        //!! // jwe BASE64URL(JWE Initialization Vector) - iv
-        //!! ciphertext += "." + base64urlFromBuffer(iv);
-        //!! // A.3.5.  Additional Authenticated Data
-        //!! // A.3.6.  Content Encryption
-        //!! // Appendix B.  Example AES_128_CBC_HMAC_SHA_256 Computation
-        //!! // B.1.  Extract MAC_KEY and ENC_KEY from Key
-        //!! // B.2.  Encrypt Plaintext to Create Ciphertext
-        //!! tmp = await crypto.subtle.importKey("raw", cek.subarray(
-            //!! 16
-        //!! ), "AES-CBC", true, [
-            //!! "encrypt"
-        //!! ]);
-        //!! tmp = base64urlFromBuffer(new Uint8Array(await crypto.subtle.encrypt({
-            //!! iv,
-            //!! name: "AES-CBC"
-        //!! }, tmp, plaintext)));
-        //!! // jwe BASE64URL(JWE Ciphertext) - ciphertext
-        //!! ciphertext += "." + tmp;
-        //!! tmp = await sign(jwk, ciphertext);
-        //!! // jwe BASE64URL(JWE Authentication Tag) - tag
-        //!! ciphertext += "." + tmp;
-        //!! return ciphertext;
-    //!! };
-    //!! jwk = {
-        //!! "alg": "A128KW",
-        //!! "k": "GawgguFyGrWKav7AX4VKUg",
-        //!! "kty": "oct"
-    //!! };
-    //!! jwk = await globalThis.crypto.subtle.importKey("jwk", jwk, {
-        //!! name: "AES-KW"
-    //!! }, false, [
-        //!! "unwrapKey", "wrapKey"
-    //!! ]);
-    //!! jwe = (
-        //!! // protectedHeader
-        //!! "eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0."
-        //!! // cek
-        //!! + "6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ."
-        //!! // iv
-        //!! + "AxY8DCtDaGlsbGljb3RoZQ."
-        //!! // ciphertext
-        //!! + "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY."
-        //!! // tag
-        //!! + "U0m_YmjN04DJvceFICbCVQ"
-    //!! );
-    //!! assertJsonEqual(await cryptoDecrypt(jwk, jwe), "Live long and prosper.");
-    //!! jwe = await cryptoEncrypt(jwk, "Live long and prosper.");
-    //!! console.error("jwe - " + jwe);
-    //!! assertJsonEqual(await cryptoDecrypt(jwk, jwe), "Live long and prosper.");
-//!! }());
+(async function () {
+    "use strict";
+    let assertJsonEqual;
+    let assertOrThrow;
+    let base64urlFromBuffer;
+    let base64urlToBuffer;
+    let cryptoDecrypt;
+    let cryptoEncrypt;
+    let jwe;
+    let jwk;
+    assertJsonEqual = function (aa, bb) {
+    /*
+     * this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
+     */
+        let objectKeysSort;
+        objectKeysSort = function (obj) {
+        /*
+         * this function will return copy of <obj> with keys sorted recursively
+         */
+            let sorted;
+            if (!(typeof obj === "object" && obj)) {
+                return obj;
+            }
+            // return copy of list with child-keys sorted recursively
+            if (Array.isArray(obj)) {
+                return obj.map(objectKeysSort);
+            }
+            // return copy of obj with keys sorted recursively
+            sorted = {};
+            Object.keys(obj).sort().forEach(function (key) {
+                sorted[key] = objectKeysSort(obj[key]);
+            });
+            return sorted;
+        };
+        aa = JSON.stringify(objectKeysSort(aa));
+        bb = JSON.stringify(objectKeysSort(bb));
+        if (aa !== bb) {
+            throw new Error(JSON.stringify(aa) + " !== " + JSON.stringify(bb));
+        }
+    };
+    assertOrThrow = function (passed, msg) {
+    /*
+     * this function will throw err.<msg> if <passed> is falsy
+     */
+        if (passed) {
+            return;
+        }
+        throw (
+            (
+                msg
+                && typeof msg.message === "string"
+                && typeof msg.stack === "string"
+            )
+            // if msg is err, then leave as is
+            ? msg
+            : new Error(
+                typeof msg === "string"
+                // if msg is string, then leave as is
+                ? msg
+                // else JSON.stringify msg
+                : JSON.stringify(msg, undefined, 4)
+            )
+        );
+    };
+    base64urlFromBuffer = function (buf) {
+        let base64url;
+        let ii;
+        base64url = "";
+        ii = 0;
+        while (ii < buf.byteLength) {
+            base64url += String.fromCharCode(buf[ii]);
+            ii += 1;
+        }
+        return globalThis.btoa(base64url).replace((
+            /\+/g
+        ), "-").replace((
+            /\//g
+        ), "_").replace((
+            /\=*?$/
+        ), "");
+    };
+    base64urlToBuffer = function (base64url) {
+        return Uint8Array.from(globalThis.atob(base64url.replace((
+            /-/g
+        ), "+").replace((
+            /_/g
+        ), "/").replace((
+            /\=*?$/
+        ), "")), function (chr) {
+            return chr.charCodeAt(0);
+        });
+    };
+    cryptoDecrypt = async function (kek, jwe) {
+        let cek;
+        let ciphertext;
+        let crypto;
+        let header;
+        let iv;
+        let tag;
+        let tmp;
+        crypto = globalThis.crypto;
+        [
+            header, cek, iv, ciphertext, tag
+        ] = jwe.split(".");
+        assertOrThrow(
+            typeof tag === "string",
+            "jwe failed decryption - " + jwe
+        );
+        cek = await crypto.subtle.unwrapKey(
+            "raw",
+            base64urlToBuffer(cek),
+            kek,
+            "AES-KW",
+            "AES-GCM",
+            false,
+            [
+                "decrypt"
+            ]
+        );
+        tmp = base64urlToBuffer(ciphertext);
+        ciphertext = new Uint8Array(tmp.length + 16);
+        ciphertext.set(tmp);
+        ciphertext.set(base64urlToBuffer(tag), tmp.length);
+        tmp = new Uint8Array(await crypto.subtle.decrypt({
+            additionalData: new TextEncoder().encode(header),
+            iv: base64urlToBuffer(iv),
+            name: "AES-GCM"
+        }, cek, ciphertext));
+        tmp = new TextDecoder().decode(tmp);
+        return tmp;
+    };
+    cryptoEncrypt = async function (kek, plaintext, header, cek, iv) {
+        let crypto;
+        let tmp;
+        crypto = globalThis.crypto;
+        kek = await crypto.subtle.importKey("jwk", {
+            "kty": "oct",
+            "k": kek
+        }, "AES-KW", false, [
+            "wrapKey"
+        ]);
+        cek = cek || base64urlFromBuffer(
+            crypto.getRandomValues(new Uint8Array(32))
+        );
+        header = header || {
+            "alg": "A128KW",
+            "enc": "A128GCM"
+        };
+        assertOrThrow(
+            header.alg === "A128KW" && header.enc === "A128GCM",
+            "jwe failed encryption - " + jwe
+        );
+        header = base64urlFromBuffer(
+            new TextEncoder().encode(JSON.stringify(header))
+        );
+        iv = iv || base64urlFromBuffer(
+            crypto.getRandomValues(new Uint8Array(18))
+        );
+        cek = await crypto.subtle.importKey("raw", base64urlToBuffer(cek), {
+            name: "AES-GCM"
+        }, true, [
+            "encrypt"
+        ]);
+        tmp = new Uint8Array(await crypto.subtle.encrypt({
+            additionalData: new TextEncoder().encode(header),
+            iv: base64urlToBuffer(iv),
+            name: "AES-GCM"
+        }, cek, new TextEncoder().encode(plaintext)));
+        cek = base64urlFromBuffer(new Uint8Array(
+            await crypto.subtle.wrapKey("raw", cek, kek, "AES-KW")
+        ));
+        return (
+            header
+            + "." + cek
+            + "." + iv
+            + "." + base64urlFromBuffer(tmp.subarray(0, -16))
+            + "." + base64urlFromBuffer(tmp.subarray(-16))
+        );
+    };
+    jwe = await cryptoEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
+        "You can trust us to stick with you through thick and "
+        + "thin\u2013to the bitter end. And you can trust us to "
+        + "keep any secret of yours\u2013closer than you keep it "
+        + "yourself. But you cannot trust us to let you face trouble "
+        + "alone, and go off without a word. We are your friends, Frodo."
+    ), {
+        "alg": "A128KW",
+        "kid": "81b20965-8332-43d9-a468-82160ad91ac8",
+        "enc": "A128GCM"
+    }, "aY5_Ghmk9KxWPBLu_glx1w", "Qx0pmsDa8KnJc9Jo");
+    console.error("encrypted jwe - " + jwe);
+    assertJsonEqual(jwe, (
+        // protectedHeader - Protected JWE header
+        "eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC"
+        + "04MjE2MGFkOTFhYzgiLCJlbmMiOiJBMTI4R0NNIn0"
+        + "."
+        // cek - encrypted key
+        + "CBI6oDw8MydIx1IBntf_lQcw2MmJKIQx"
+        + "."
+        // iv - Initialization vector/nonce
+        + "Qx0pmsDa8KnJc9Jo"
+        + "."
+        // ciphertext
+        + "AwliP-KmWgsZ37BvzCefNen6VTbRK3QMA4TkvRkH0tP1bTdhtFJgJxeVmJkLD6"
+        + "1A1hnWGetdg11c9ADsnWgL56NyxwSYjU1ZEHcGkd3EkU0vjHi9gTlb90qSYFfe"
+        + "F0LwkcTtjbYKCsiNJQkcIp1yeM03OmuiYSoYJVSpf7ej6zaYcMv3WwdxDFl8RE"
+        + "wOhNImk2Xld2JXq6BR53TSFkyT7PwVLuq-1GwtGHlQeg7gDT6xW0JqHDPn_H-p"
+        + "uQsmthc9Zg0ojmJfqqFvETUxLAF-KjcBTS5dNy6egwkYtOt8EIHK-oEsKYtZRa"
+        + "a8Z7MOZ7UGxGIMvEmxrGCPeJa14slv2-gaqK0kEThkaSqdYw0FkQZF"
+        + "."
+        // tag - Authentication tag
+        + "ER7MWJZ1FBI_NKvn7Zb1Lw"
+    ));
+}());
 </script>
 
 </body>
