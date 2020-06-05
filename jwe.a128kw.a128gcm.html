@@ -4873,6 +4873,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
     let base64urlToBuffer;
     let cryptoDecrypt;
     let cryptoEncrypt;
+    let cryptoValidateHeader;
     let myJwe;
     let myKek;
     let myPlaintext;
@@ -4971,22 +4972,22 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         // validate jwe
         assertOrThrow((
             /^[\w\-]+?\.[\w\-]+?\.[\w\-]+?\.[\w\-]*?\.[\w\-]+?$/
-        ).test(jwe), "jwe failed encryption - " + jwe);
-        // init cek, ciphertext, header, iv, tag
+        ).test(jwe), "jwe failed validation");
+        // init var
         [
             header, cek, iv, ciphertext, tag
-        ] = jwe.split(".").map(base64urlToBuffer);
-        aad = new TextEncoder().encode(base64urlFromBuffer(header));
-        // validate header
-        header = JSON.parse(new TextDecoder().decode(header));
-        assertOrThrow((
-            (header.alg === "A128KW" && header.enc === "A128GCM")
-            || (header.alg === "A256KW" && header.enc === "A256GCM")
-        ), "jwe failed encryption - " + JSON.stringify(header));
-        kek = await crypto.subtle.importKey("jwk", {
-            "kty": "oct",
-            "k": kek
-        }, "AES-KW", false, [
+        ] = jwe.split(".");
+        aad = new TextEncoder().encode(header);
+        cek = base64urlToBuffer(cek);
+        ciphertext = base64urlToBuffer(ciphertext);
+        iv = base64urlToBuffer(iv);
+        kek = base64urlToBuffer(kek);
+        tag = base64urlToBuffer(tag);
+        header = JSON.parse(new TextDecoder().decode(
+            base64urlToBuffer(header)
+        ));
+        cryptoValidateHeader(header, kek, cek, 8);
+        kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
             "unwrapKey"
         ]);
         cek = await crypto.subtle.unwrapKey("raw", cek, kek, {
@@ -5017,7 +5018,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         assertOrThrow((
             (header.alg === "A128KW" && header.enc === "A128GCM")
             || (header.alg === "A256KW" && header.enc === "A256GCM")
-        ), "jwe failed encryption - " + JSON.stringify(header));
+        ), "jwe failed validation");
         kek = await crypto.subtle.importKey("jwk", {
             "kty": "oct",
             "k": kek
@@ -5057,6 +5058,22 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
             + "." + base64urlFromBuffer(tmp.subarray(0, -16))
             + "." + base64urlFromBuffer(tmp.subarray(-16))
         );
+    };
+    cryptoValidateHeader = function (header, kek, cek, cekPadding = 0) {
+        assertOrThrow((
+            (header.alg === "A128KW" && header.enc === "A128GCM")
+            || (header.alg === "A256KW" && header.enc === "A256GCM")
+        ), "jwe failed validation");
+        assertOrThrow(kek.byteLength === (
+            header.alg !== "A256KW"
+            ? 16
+            : 32
+        ), "jwe failed validation");
+        assertOrThrow((cek.byteLength - cekPadding) === (
+            header.enc !== "A256GCM"
+            ? 16
+            : 32
+        ), "jwe failed validation");
     };
     myJwe = await cryptoEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
         "You can trust us to stick with you through thick and "
