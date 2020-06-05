@@ -4969,15 +4969,13 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         crypto = globalThis.crypto;
         // rgx-check jwe
         assertOrThrow((
-            /./
+            /^[\w\-]+?\.[\w\-]+?\.[\w\-]+?\.[\w\-]+?\.[\w\-]+?$/
         ).test(jwe), "jwe failed encryption - " + jwe);
         [
             header, cek, iv, ciphertext, tag
-        ] = jwe.split(".");
+        ] = jwe.split(".").map(base64urlToBuffer);
         // validate header
-        tmp = JSON.parse(
-            new TextDecoder().decode(base64urlToBuffer(header))
-        );
+        tmp = JSON.parse(new TextDecoder().decode(header));
         assertOrThrow((
             (tmp.alg === "A128KW" && tmp.enc === "A128GCM")
             || (tmp.alg === "A256KW" && tmp.enc === "A256GCM")
@@ -4988,24 +4986,20 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         }, "AES-KW", false, [
             "unwrapKey"
         ]);
-        cek = await crypto.subtle.unwrapKey(
-            "raw",
-            base64urlToBuffer(cek),
-            kek,
-            "AES-KW",
-            "AES-GCM",
-            false,
-            [
-                "decrypt"
-            ]
-        );
-        tmp = base64urlToBuffer(ciphertext);
+        cek = await crypto.subtle.unwrapKey("raw", cek, kek, {
+            name: "AES-KW"
+        }, "AES-GCM", false, [
+            "decrypt"
+        ]);
+        tmp = ciphertext;
         ciphertext = new Uint8Array(tmp.length + 16);
         ciphertext.set(tmp);
-        ciphertext.set(base64urlToBuffer(tag), tmp.length);
+        ciphertext.set(tag, tmp.length);
         tmp = new Uint8Array(await crypto.subtle.decrypt({
-            additionalData: new TextEncoder().encode(header),
-            iv: base64urlToBuffer(iv),
+            additionalData: new TextEncoder().encode(
+                base64urlFromBuffer(header)
+            ),
+            iv,
             name: "AES-GCM"
         }, cek, ciphertext));
         return new TextDecoder().decode(tmp);
@@ -5122,6 +5116,8 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         + "yourself. But you cannot trust us to let you face trouble "
         + "alone, and go off without a word. We are your friends, Frodo."
     ));
+    myJwe = await cryptoEncrypt(myKek, "");
+    console.error("encrypted jwe - " + myJwe);
 }());
 </script>
 
