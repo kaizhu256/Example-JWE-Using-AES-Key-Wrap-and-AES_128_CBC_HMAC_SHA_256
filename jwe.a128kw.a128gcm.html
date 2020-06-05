@@ -4978,10 +4978,10 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         tmp = JSON.parse(
             new TextDecoder().decode(base64urlToBuffer(header))
         );
-        assertOrThrow(
-            tmp.alg === "A128KW" && tmp.enc === "A128GCM",
-            "jwe failed encryption - " + jwe
-        );
+        assertOrThrow((
+            (tmp.alg === "A128KW" && tmp.enc === "A128GCM")
+            || (tmp.alg === "A256KW" && tmp.enc === "A256GCM")
+        ), "jwe failed encryption - " + JSON.stringify(tmp));
         kek = await crypto.subtle.importKey("jwk", {
             "kty": "oct",
             "k": kek
@@ -5015,14 +5015,14 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         let tmp;
         crypto = globalThis.crypto;
         header = header || {
-            "alg": "A128KW",
-            "enc": "A128GCM"
+            "alg": "A256KW",
+            "enc": "A256GCM"
         };
         // validate header
-        assertOrThrow(
-            header.alg === "A128KW" && header.enc === "A128GCM",
-            "jwe failed encryption - " + JSON.stringify(header)
-        );
+        assertOrThrow((
+            (header.alg === "A128KW" && header.enc === "A128GCM")
+            || (header.alg === "A256KW" && header.enc === "A256GCM")
+        ), "jwe failed encryption - " + JSON.stringify(header));
         kek = await crypto.subtle.importKey("jwk", {
             "kty": "oct",
             "k": kek
@@ -5113,6 +5113,15 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         + "alone, and go off without a word. We are your friends, Frodo."
     ));
     console.error("encrypted jwe - " + myJwe);
+    myPlaintext = await cryptoDecrypt(myKek, myJwe);
+    console.error("decrypted jwe - " + myPlaintext);
+    assertJsonEqual(myPlaintext, (
+        "You can trust us to stick with you through thick and "
+        + "thin\u2013to the bitter end. And you can trust us to "
+        + "keep any secret of yours\u2013closer than you keep it "
+        + "yourself. But you cannot trust us to let you face trouble "
+        + "alone, and go off without a word. We are your friends, Frodo."
+    ));
 }());
 </script>
 
