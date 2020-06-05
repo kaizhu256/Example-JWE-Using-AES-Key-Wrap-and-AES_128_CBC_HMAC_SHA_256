@@ -4873,8 +4873,9 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
     let base64urlToBuffer;
     let cryptoDecrypt;
     let cryptoEncrypt;
-    let jwe;
-    let plaintext;
+    let myJwe;
+    let myKek;
+    let myPlaintext;
     assertJsonEqual = function (aa, bb) {
     /*
      * this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
@@ -5058,7 +5059,7 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
             + "." + base64urlFromBuffer(tmp.subarray(-16))
         );
     };
-    jwe = await cryptoEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
+    myJwe = await cryptoEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
         "You can trust us to stick with you through thick and "
         + "thin\u2013to the bitter end. And you can trust us to "
         + "keep any secret of yours\u2013closer than you keep it "
@@ -5069,8 +5070,8 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         "kid": "81b20965-8332-43d9-a468-82160ad91ac8",
         "enc": "A128GCM"
     }, "aY5_Ghmk9KxWPBLu_glx1w", "Qx0pmsDa8KnJc9Jo");
-    console.error("encrypted jwe - " + jwe);
-    assertJsonEqual(jwe, (
+    console.error("encrypted jwe - " + myJwe);
+    assertJsonEqual(myJwe, (
         // protectedHeader - Protected JWE header
         "eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC"
         + "04MjE2MGFkOTFhYzgiLCJlbmMiOiJBMTI4R0NNIn0"
@@ -5092,15 +5093,26 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         // tag - Authentication tag
         + "ER7MWJZ1FBI_NKvn7Zb1Lw"
     ));
-    plaintext = await cryptoDecrypt("GZy6sIZ6wl9NJOKB-jnmVQ", jwe);
-    console.error("decrypted jwe - " + plaintext);
-    assertJsonEqual(plaintext, (
+    myPlaintext = await cryptoDecrypt("GZy6sIZ6wl9NJOKB-jnmVQ", myJwe);
+    console.error("decrypted jwe - " + myPlaintext);
+    assertJsonEqual(myPlaintext, (
         "You can trust us to stick with you through thick and "
         + "thin\u2013to the bitter end. And you can trust us to "
         + "keep any secret of yours\u2013closer than you keep it "
         + "yourself. But you cannot trust us to let you face trouble "
         + "alone, and go off without a word. We are your friends, Frodo."
     ));
+    myKek = base64urlFromBuffer(globalThis.crypto.getRandomValues(
+        new Uint8Array(32)
+    ));
+    myJwe = await cryptoEncrypt(myKek, (
+        "You can trust us to stick with you through thick and "
+        + "thin\u2013to the bitter end. And you can trust us to "
+        + "keep any secret of yours\u2013closer than you keep it "
+        + "yourself. But you cannot trust us to let you face trouble "
+        + "alone, and go off without a word. We are your friends, Frodo."
+    ));
+    console.error("encrypted jwe - " + myJwe);
 }());
 </script>
 
