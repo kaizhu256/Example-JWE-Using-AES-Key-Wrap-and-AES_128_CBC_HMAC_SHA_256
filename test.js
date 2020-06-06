@@ -1,46 +1,71 @@
-(async function () {
+/* istanbul ignore next */
+// run shared js-env code - init-local
+(function (globalThis) {
     "use strict";
-    let assertJsonEqual;
-    let assertOrThrow;
-    let base64urlFromBuffer;
-    let base64urlToBuffer;
-    let cryptoDecrypt;
-    let cryptoEncrypt;
-    let cryptoValidateHeader;
-    let myJwe;
-    let myKek;
-    let myPlaintext;
-    assertJsonEqual = function (aa, bb) {
+    let consoleError;
+    let local;
+    // init globalThis
+    globalThis.globalThis = globalThis.globalThis || globalThis;
+    // init debugInline
+    if (!globalThis.debugInline) {
+        consoleError = console.error;
+        globalThis.debugInline = function (...argList) {
+        /*
+         * this function will both print <argList> to stderr
+         * and return <argList>[0]
+         */
+            consoleError("\n\ndebugInline");
+            consoleError(...argList);
+            consoleError("\n");
+            return argList[0];
+        };
+    }
+    // init local
+    local = {};
+    local.local = local;
+    globalThis.globalLocal = local;
+    // init isBrowser
+    local.isBrowser = (
+        typeof globalThis.XMLHttpRequest === "function"
+        && globalThis.navigator
+        && typeof globalThis.navigator.userAgent === "string"
+    );
+    // init isWebWorker
+    local.isWebWorker = (
+        local.isBrowser && typeof globalThis.importScripts === "function"
+    );
+    // init function
+    local.assertJsonEqual = function (aa, bb) {
     /*
      * this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
      */
-        let objectKeysSort;
-        objectKeysSort = function (obj) {
+        let objectDeepCopyWithKeysSorted;
+        objectDeepCopyWithKeysSorted = function (obj) {
         /*
-         * this function will return copy of <obj> with keys sorted recursively
+         * this function will recursively deep-copy <obj> with keys sorted
          */
             let sorted;
             if (!(typeof obj === "object" && obj)) {
                 return obj;
             }
-            // return copy of list with child-keys sorted recursively
+            // recursively deep-copy list with child-keys sorted
             if (Array.isArray(obj)) {
-                return obj.map(objectKeysSort);
+                return obj.map(objectDeepCopyWithKeysSorted);
             }
-            // return copy of obj with keys sorted recursively
+            // recursively deep-copy obj with keys sorted
             sorted = {};
             Object.keys(obj).sort().forEach(function (key) {
-                sorted[key] = objectKeysSort(obj[key]);
+                sorted[key] = objectDeepCopyWithKeysSorted(obj[key]);
             });
             return sorted;
         };
-        aa = JSON.stringify(objectKeysSort(aa));
-        bb = JSON.stringify(objectKeysSort(bb));
+        aa = JSON.stringify(objectDeepCopyWithKeysSorted(aa));
+        bb = JSON.stringify(objectDeepCopyWithKeysSorted(bb));
         if (aa !== bb) {
             throw new Error(JSON.stringify(aa) + " !== " + JSON.stringify(bb));
         }
     };
-    assertOrThrow = function (passed, msg) {
+    local.assertOrThrow = function (passed, msg) {
     /*
      * this function will throw err.<msg> if <passed> is falsy
      */
@@ -64,6 +89,112 @@
             )
         );
     };
+    local.coalesce = function (...argList) {
+    /*
+     * this function will coalesce null, undefined, or "" in <argList>
+     */
+        let arg;
+        let ii;
+        ii = 0;
+        while (ii < argList.length) {
+            arg = argList[ii];
+            if (arg !== undefined && arg !== null && arg !== "") {
+                return arg;
+            }
+            ii += 1;
+        }
+        return arg;
+    };
+    local.identity = function (val) {
+    /*
+     * this function will return <val>
+     */
+        return val;
+    };
+    local.nop = function () {
+    /*
+     * this function will do nothing
+     */
+        return;
+    };
+    local.objectAssignDefault = function (tgt = {}, src = {}, depth = 0) {
+    /*
+     * this function will if items from <tgt> are null, undefined, or "",
+     * then overwrite them with items from <src>
+     */
+        let recurse;
+        recurse = function (tgt, src, depth) {
+            Object.entries(src).forEach(function ([
+                key, bb
+            ]) {
+                let aa;
+                aa = tgt[key];
+                if (aa === undefined || aa === null || aa === "") {
+                    tgt[key] = bb;
+                    return;
+                }
+                if (
+                    depth !== 0
+                    && typeof aa === "object" && aa && !Array.isArray(aa)
+                    && typeof bb === "object" && bb && !Array.isArray(bb)
+                ) {
+                    recurse(aa, bb, depth - 1);
+                }
+            });
+        };
+        recurse(tgt, src, depth | 0);
+        return tgt;
+    };
+    // require builtin
+    if (!local.isBrowser) {
+        if (process.unhandledRejections !== "strict") {
+            process.unhandledRejections = "strict";
+            process.on("unhandledRejection", function (err) {
+                throw err;
+            });
+        }
+        local.assert = require("assert");
+        local.buffer = require("buffer");
+        local.child_process = require("child_process");
+        local.cluster = require("cluster");
+        local.crypto = require("crypto");
+        local.dgram = require("dgram");
+        local.dns = require("dns");
+        local.domain = require("domain");
+        local.events = require("events");
+        local.fs = require("fs");
+        local.http = require("http");
+        local.https = require("https");
+        local.net = require("net");
+        local.os = require("os");
+        local.path = require("path");
+        local.querystring = require("querystring");
+        local.readline = require("readline");
+        local.repl = require("repl");
+        local.stream = require("stream");
+        local.string_decoder = require("string_decoder");
+        local.timers = require("timers");
+        local.tls = require("tls");
+        local.tty = require("tty");
+        local.url = require("url");
+        local.util = require("util");
+        local.vm = require("vm");
+        local.zlib = require("zlib");
+    }
+}((typeof globalThis === "object" && globalThis) || window));
+
+
+
+(async function () {
+    "use strict";
+    let base64urlFromBuffer;
+    let base64urlToBuffer;
+    let cryptoDecrypt;
+    let cryptoEncrypt;
+    let cryptoValidateHeader;
+    let myJwe;
+    let myKek;
+    let myPlaintext;
     base64urlFromBuffer = function (buf) {
         let base64url;
         let ii;
@@ -102,7 +233,7 @@
         let tmp;
         crypto = globalThis.crypto;
         // validate jwe
-        assertOrThrow((
+        local.assertOrThrow((
             /^[\w\-]+?\.[\w\-]+?\.[\w\-]+?\.[\w\-]*?\.[\w\-]+?$/
         ).test(jwe), "jwe failed validation");
         // init var
@@ -183,16 +314,16 @@
         );
     };
     cryptoValidateHeader = function (header, kek, cek, cekPadding) {
-        assertOrThrow((
+        local.assertOrThrow((
             (header.alg === "A128KW" && header.enc === "A128GCM")
             || (header.alg === "A256KW" && header.enc === "A256GCM")
         ), "jwe failed validation");
-        assertOrThrow(kek.byteLength === (
+        local.assertOrThrow(kek.byteLength === (
             header.alg !== "A256KW"
             ? 16
             : 32
         ), "jwe failed validation");
-        assertOrThrow((cek.byteLength - cekPadding) === (
+        local.assertOrThrow((cek.byteLength - cekPadding) === (
             header.enc !== "A256GCM"
             ? 16
             : 32
@@ -210,7 +341,7 @@
         "enc": "A128GCM"
     }, "aY5_Ghmk9KxWPBLu_glx1w", "Qx0pmsDa8KnJc9Jo");
     console.log("encrypted jwe - " + myJwe);
-    assertJsonEqual(myJwe, (
+    local.assertJsonEqual(myJwe, (
         // protectedHeader - Protected JWE header
         "eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC"
         + "04MjE2MGFkOTFhYzgiLCJlbmMiOiJBMTI4R0NNIn0"
@@ -234,7 +365,7 @@
     ));
     myPlaintext = await cryptoDecrypt("GZy6sIZ6wl9NJOKB-jnmVQ", myJwe);
     console.log("decrypted jwe - " + myPlaintext);
-    assertJsonEqual(myPlaintext, (
+    local.assertJsonEqual(myPlaintext, (
         "You can trust us to stick with you through thick and "
         + "thin\u2013to the bitter end. And you can trust us to "
         + "keep any secret of yours\u2013closer than you keep it "
@@ -254,7 +385,7 @@
     console.log("encrypted jwe - " + myJwe);
     myPlaintext = await cryptoDecrypt(myKek, myJwe);
     console.log("decrypted jwe - " + myPlaintext);
-    assertJsonEqual(myPlaintext, (
+    local.assertJsonEqual(myPlaintext, (
         "You can trust us to stick with you through thick and "
         + "thin\u2013to the bitter end. And you can trust us to "
         + "keep any secret of yours\u2013closer than you keep it "
