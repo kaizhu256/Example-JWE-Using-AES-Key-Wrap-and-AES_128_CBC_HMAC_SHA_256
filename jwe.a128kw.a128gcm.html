@@ -4960,7 +4960,6 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         });
     };
     cryptoDecrypt = async function (kek, jwe) {
-        let aad;
         let cek;
         let ciphertext;
         let crypto;
@@ -4977,16 +4976,12 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         [
             header, cek, iv, ciphertext, tag
         ] = jwe.split(".");
-        aad = new TextEncoder().encode(header);
         cek = base64urlToBuffer(cek);
-        ciphertext = base64urlToBuffer(ciphertext);
-        iv = base64urlToBuffer(iv);
         kek = base64urlToBuffer(kek);
-        tag = base64urlToBuffer(tag);
-        header = JSON.parse(new TextDecoder().decode(
+        // validate header
+        cryptoValidateHeader(JSON.parse(new TextDecoder().decode(
             base64urlToBuffer(header)
-        ));
-        cryptoValidateHeader(header, kek, cek, 8);
+        )), kek, cek, 8);
         kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
             "unwrapKey"
         ]);
@@ -4995,13 +4990,13 @@ tlMizR88NKU1WkBsiXMCjy1Noue7MD-ShDp5dmM",
         }, "AES-GCM", false, [
             "decrypt"
         ]);
-        tmp = ciphertext;
+        tmp = base64urlToBuffer(ciphertext);
         ciphertext = new Uint8Array(tmp.length + 16);
         ciphertext.set(tmp);
-        ciphertext.set(tag, tmp.length);
+        ciphertext.set(base64urlToBuffer(tag), tmp.length);
         tmp = new Uint8Array(await crypto.subtle.decrypt({
-            additionalData: aad,
-            iv,
+            additionalData: new TextEncoder().encode(header),
+            iv: base64urlToBuffer(iv),
             name: "AES-GCM"
         }, cek, ciphertext));
         return new TextDecoder().decode(tmp);
