@@ -1,3 +1,4 @@
+/* jslint utility2:true */
 /* istanbul ignore next */
 // run shared js-env code - init-local
 (function (globalThis) {
@@ -185,16 +186,20 @@
 
 
 
-(async function () {
+// run shared js-env code - function
+(async function (local) {
     "use strict";
+    let assertJsonEqual;
+    let assertOrThrow;
     let base64urlFromBuffer;
     let base64urlToBuffer;
-    let cryptoDecrypt;
-    let cryptoEncrypt;
+    let cryptoDecryptBrowser;
+    let cryptoDecryptNode;
+    let cryptoEncryptBrowser;
     let cryptoValidateHeader;
-    let myJwe;
-    let myKek;
-    let myPlaintext;
+    let runMe;
+    assertJsonEqual = local.assertJsonEqual;
+    assertOrThrow = local.assertOrThrow;
     base64urlFromBuffer = function (buf) {
         let base64url;
         let ii;
@@ -223,7 +228,7 @@
             return chr.charCodeAt(0);
         });
     };
-    cryptoDecrypt = async function (kek, jwe) {
+    cryptoDecryptBrowser = async function (kek, jwe) {
         let cek;
         let ciphertext;
         let crypto;
@@ -233,7 +238,7 @@
         let tmp;
         crypto = globalThis.crypto;
         // validate jwe
-        local.assertOrThrow((
+        assertOrThrow((
             /^[\w\-]+?\.[\w\-]+?\.[\w\-]+?\.[\w\-]*?\.[\w\-]+?$/
         ).test(jwe), "jwe failed validation");
         // init var
@@ -265,7 +270,55 @@
         }, cek, ciphertext));
         return new TextDecoder().decode(tmp);
     };
-    cryptoEncrypt = async function (kek, plaintext, header, cek, iv) {
+    cryptoEncryptBrowser = async function (kek, plaintext, header, cek, iv) {
+        let crypto;
+        let tmp;
+        crypto = globalThis.crypto;
+        header = header || {
+            "alg": "A256KW",
+            "enc": "A256GCM"
+        };
+        kek = base64urlToBuffer(kek);
+        cek = base64urlToBuffer(cek || base64urlFromBuffer(
+            crypto.getRandomValues(new Uint8Array(
+                header.enc !== "A256GCM"
+                ? 16
+                : 32
+            ))
+        ));
+        // validate header
+        cryptoValidateHeader(header, kek, cek, 0);
+        kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
+            "wrapKey"
+        ]);
+        header = base64urlFromBuffer(
+            new TextEncoder().encode(JSON.stringify(header))
+        );
+        iv = iv || base64urlFromBuffer(
+            crypto.getRandomValues(new Uint8Array(12))
+        );
+        cek = await crypto.subtle.importKey("raw", cek, {
+            name: "AES-GCM"
+        }, true, [
+            "encrypt"
+        ]);
+        tmp = new Uint8Array(await crypto.subtle.encrypt({
+            additionalData: new TextEncoder().encode(header),
+            iv: base64urlToBuffer(iv),
+            name: "AES-GCM"
+        }, cek, new TextEncoder().encode(plaintext)));
+        cek = base64urlFromBuffer(new Uint8Array(
+            await crypto.subtle.wrapKey("raw", cek, kek, "AES-KW")
+        ));
+        return (
+            header
+            + "." + cek
+            + "." + iv
+            + "." + base64urlFromBuffer(tmp.subarray(0, -16))
+            + "." + base64urlFromBuffer(tmp.subarray(-16))
+        );
+    };
+    cryptoDecryptNode = async function (kek, plaintext, header, cek, iv) {
         let crypto;
         let tmp;
         crypto = globalThis.crypto;
@@ -314,86 +367,96 @@
         );
     };
     cryptoValidateHeader = function (header, kek, cek, cekPadding) {
-        local.assertOrThrow((
+        assertOrThrow((
             (header.alg === "A128KW" && header.enc === "A128GCM")
             || (header.alg === "A256KW" && header.enc === "A256GCM")
         ), "jwe failed validation");
-        local.assertOrThrow(kek.byteLength === (
+        assertOrThrow(kek.byteLength === (
             header.alg !== "A256KW"
             ? 16
             : 32
         ), "jwe failed validation");
-        local.assertOrThrow((cek.byteLength - cekPadding) === (
+        assertOrThrow((cek.byteLength - cekPadding) === (
             header.enc !== "A256GCM"
             ? 16
             : 32
         ), "jwe failed validation");
     };
-    myJwe = await cryptoEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
-        "You can trust us to stick with you through thick and "
-        + "thin\u2013to the bitter end. And you can trust us to "
-        + "keep any secret of yours\u2013closer than you keep it "
-        + "yourself. But you cannot trust us to let you face trouble "
-        + "alone, and go off without a word. We are your friends, Frodo."
-    ), {
-        "alg": "A128KW",
-        "kid": "81b20965-8332-43d9-a468-82160ad91ac8",
-        "enc": "A128GCM"
-    }, "aY5_Ghmk9KxWPBLu_glx1w", "Qx0pmsDa8KnJc9Jo");
-    console.log("encrypted jwe - " + myJwe);
-    local.assertJsonEqual(myJwe, (
-        // protectedHeader - Protected JWE header
-        "eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC"
-        + "04MjE2MGFkOTFhYzgiLCJlbmMiOiJBMTI4R0NNIn0"
-        + "."
-        // cek - encrypted key
-        + "CBI6oDw8MydIx1IBntf_lQcw2MmJKIQx"
-        + "."
-        // iv - Initialization vector/nonce
-        + "Qx0pmsDa8KnJc9Jo"
-        + "."
-        // ciphertext
-        + "AwliP-KmWgsZ37BvzCefNen6VTbRK3QMA4TkvRkH0tP1bTdhtFJgJxeVmJkLD6"
-        + "1A1hnWGetdg11c9ADsnWgL56NyxwSYjU1ZEHcGkd3EkU0vjHi9gTlb90qSYFfe"
-        + "F0LwkcTtjbYKCsiNJQkcIp1yeM03OmuiYSoYJVSpf7ej6zaYcMv3WwdxDFl8RE"
-        + "wOhNImk2Xld2JXq6BR53TSFkyT7PwVLuq-1GwtGHlQeg7gDT6xW0JqHDPn_H-p"
-        + "uQsmthc9Zg0ojmJfqqFvETUxLAF-KjcBTS5dNy6egwkYtOt8EIHK-oEsKYtZRa"
-        + "a8Z7MOZ7UGxGIMvEmxrGCPeJa14slv2-gaqK0kEThkaSqdYw0FkQZF"
-        + "."
-        // tag - Authentication tag
-        + "ER7MWJZ1FBI_NKvn7Zb1Lw"
-    ));
-    myPlaintext = await cryptoDecrypt("GZy6sIZ6wl9NJOKB-jnmVQ", myJwe);
-    console.log("decrypted jwe - " + myPlaintext);
-    local.assertJsonEqual(myPlaintext, (
-        "You can trust us to stick with you through thick and "
-        + "thin\u2013to the bitter end. And you can trust us to "
-        + "keep any secret of yours\u2013closer than you keep it "
-        + "yourself. But you cannot trust us to let you face trouble "
-        + "alone, and go off without a word. We are your friends, Frodo."
-    ));
-    myKek = base64urlFromBuffer(globalThis.crypto.getRandomValues(
-        new Uint8Array(32)
-    ));
-    myJwe = await cryptoEncrypt(myKek, (
-        "You can trust us to stick with you through thick and "
-        + "thin\u2013to the bitter end. And you can trust us to "
-        + "keep any secret of yours\u2013closer than you keep it "
-        + "yourself. But you cannot trust us to let you face trouble "
-        + "alone, and go off without a word. We are your friends, Frodo."
-    ));
-    console.log("encrypted jwe - " + myJwe);
-    myPlaintext = await cryptoDecrypt(myKek, myJwe);
-    console.log("decrypted jwe - " + myPlaintext);
-    local.assertJsonEqual(myPlaintext, (
-        "You can trust us to stick with you through thick and "
-        + "thin\u2013to the bitter end. And you can trust us to "
-        + "keep any secret of yours\u2013closer than you keep it "
-        + "yourself. But you cannot trust us to let you face trouble "
-        + "alone, and go off without a word. We are your friends, Frodo."
-    ));
-    myJwe = await cryptoEncrypt(myKek, "");
-    console.log("encrypted jwe - " + myJwe);
-    myPlaintext = await cryptoDecrypt(myKek, myJwe);
-    console.log("decrypted jwe - " + myPlaintext);
-}());
+    runMe = async function () {
+        debugInline("sldfkj");
+        if (!local.isBrowser) {
+            return;
+        }
+        let myJwe;
+        let myKek;
+        let myPlaintext;
+        myJwe = await cryptoEncryptBrowser("GZy6sIZ6wl9NJOKB-jnmVQ", (
+            "You can trust us to stick with you through thick and "
+            + "thin\u2013to the bitter end. And you can trust us to "
+            + "keep any secret of yours\u2013closer than you keep it "
+            + "yourself. But you cannot trust us to let you face trouble "
+            + "alone, and go off without a word. We are your friends, Frodo."
+        ), {
+            "alg": "A128KW",
+            "kid": "81b20965-8332-43d9-a468-82160ad91ac8",
+            "enc": "A128GCM"
+        }, "aY5_Ghmk9KxWPBLu_glx1w", "Qx0pmsDa8KnJc9Jo");
+        console.log("encrypted jwe - " + myJwe);
+        assertJsonEqual(myJwe, (
+            // protectedHeader - Protected JWE header
+            "eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC"
+            + "04MjE2MGFkOTFhYzgiLCJlbmMiOiJBMTI4R0NNIn0"
+            + "."
+            // cek - encrypted key
+            + "CBI6oDw8MydIx1IBntf_lQcw2MmJKIQx"
+            + "."
+            // iv - Initialization vector/nonce
+            + "Qx0pmsDa8KnJc9Jo"
+            + "."
+            // ciphertext
+            + "AwliP-KmWgsZ37BvzCefNen6VTbRK3QMA4TkvRkH0tP1bTdhtFJgJxeVmJkLD6"
+            + "1A1hnWGetdg11c9ADsnWgL56NyxwSYjU1ZEHcGkd3EkU0vjHi9gTlb90qSYFfe"
+            + "F0LwkcTtjbYKCsiNJQkcIp1yeM03OmuiYSoYJVSpf7ej6zaYcMv3WwdxDFl8RE"
+            + "wOhNImk2Xld2JXq6BR53TSFkyT7PwVLuq-1GwtGHlQeg7gDT6xW0JqHDPn_H-p"
+            + "uQsmthc9Zg0ojmJfqqFvETUxLAF-KjcBTS5dNy6egwkYtOt8EIHK-oEsKYtZRa"
+            + "a8Z7MOZ7UGxGIMvEmxrGCPeJa14slv2-gaqK0kEThkaSqdYw0FkQZF"
+            + "."
+            // tag - Authentication tag
+            + "ER7MWJZ1FBI_NKvn7Zb1Lw"
+        ));
+        myPlaintext = await cryptoDecryptBrowser("GZy6sIZ6wl9NJOKB-jnmVQ", myJwe);
+        console.log("decrypted jwe - " + myPlaintext);
+        assertJsonEqual(myPlaintext, (
+            "You can trust us to stick with you through thick and "
+            + "thin\u2013to the bitter end. And you can trust us to "
+            + "keep any secret of yours\u2013closer than you keep it "
+            + "yourself. But you cannot trust us to let you face trouble "
+            + "alone, and go off without a word. We are your friends, Frodo."
+        ));
+        myKek = base64urlFromBuffer(globalThis.crypto.getRandomValues(
+            new Uint8Array(32)
+        ));
+        myJwe = await cryptoEncryptBrowser(myKek, (
+            "You can trust us to stick with you through thick and "
+            + "thin\u2013to the bitter end. And you can trust us to "
+            + "keep any secret of yours\u2013closer than you keep it "
+            + "yourself. But you cannot trust us to let you face trouble "
+            + "alone, and go off without a word. We are your friends, Frodo."
+        ));
+        console.log("encrypted jwe - " + myJwe);
+        myPlaintext = await cryptoDecryptBrowser(myKek, myJwe);
+        console.log("decrypted jwe - " + myPlaintext);
+        assertJsonEqual(myPlaintext, (
+            "You can trust us to stick with you through thick and "
+            + "thin\u2013to the bitter end. And you can trust us to "
+            + "keep any secret of yours\u2013closer than you keep it "
+            + "yourself. But you cannot trust us to let you face trouble "
+            + "alone, and go off without a word. We are your friends, Frodo."
+        ));
+        myJwe = await cryptoEncryptBrowser(myKek, "");
+        console.log("encrypted jwe - " + myJwe);
+        myPlaintext = await cryptoDecryptBrowser(myKek, myJwe);
+        console.log("decrypted jwe - " + myPlaintext);
+    };
+    runMe();
+}(globalThis.globalLocal));
