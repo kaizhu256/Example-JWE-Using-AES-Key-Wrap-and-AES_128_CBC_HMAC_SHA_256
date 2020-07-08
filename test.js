@@ -576,21 +576,80 @@
     //!! cryptoKeyWrapNode = function (kek, cek) {
     //!! };
     runMe = async function () {
+        let aa;
         let cek;
+        let ii;
+        let jj;
         let kek;
+        let kk;
         let nn;
+        let pp;
         let rr;
         if (local.isBrowser) {
             return;
         }
         kek = base64urlToBuffer("GZy6sIZ6wl9NJOKB-jnmVQ");
         cek = base64urlToBuffer("CBI6oDw8MydIx1IBntf_lQcw2MmJKIQx");
-        debugInline(kek);
-        debugInline(cek);
-        //!! cek = base64urlFromBuffer(
-            //!! cryptoKeyWrapNode(kek, cek, "unwrap")
-        //!! );
-        debugInline(cek);
+        //!! debugInline(kek);
+        //!! debugInline(cek);
+        //!! //!! cek = base64urlFromBuffer(
+            //!! //!! cryptoKeyWrapNode(kek, cek, "unwrap")
+        //!! //!! );
+        //!! debugInline(cek);
+/*
+ * https://tools.ietf.org/html/rfc7516#appendix-A.3.3
+    2.2.2 Key Unwrap
+    https://tools.ietf.org/html/rfc3394#section-2.2.2
+        Inputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}, and
+            Key, K (the KEK).
+        Outputs: Plaintext, n 64-bit values {P0, P1, K, Pn}.
+        1) Initialize variables.
+            Set A = C[0]
+            For i = 1 to n
+                R[i] = C[i]
+        2) Compute intermediate values.
+            For j = 5 to 0
+                For i = n to 1
+                    B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
+                    A = MSB(64, B)
+                    R[i] = LSB(64, B)
+        3) Output results.
+            For i = 1 to n
+                P[i] = R[i]
+ */
+        // 1) Initialize variables.
+        nn = 2;
+        rr = Buffer.alloc(nn * 64);
+        // Set A = C[0]
+        aa = cek.slice(8);
+        // For i = 1 to n
+        // R[i] = C[i]
+        ii = 1;
+        while (ii <= nn) {
+            kk = 0;
+            while (kk < 8) {
+                rr[ii * 8 + kk] = cek[ii * 8 + kk];
+                kk += 1;
+            }
+            ii += 1;
+        }
+        // 2) Compute intermediate values.
+        // For j = 5 to 0
+        jj = 5;
+        while (0 <= jj) {
+            // For i = n to 1
+            ii = nn;
+            while (1 <= ii) {
+                // B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
+                // A = MSB(64, B)
+                // R[i] = LSB(64, B)
+                ii -= 1;
+            }
+            jj -= 1;
+        }
+    // 3) Output results.
+    // For i = 1 to n
+    // P[i] = R[i]
     };
     await runMe();
 }(globalThis.globalLocal));
