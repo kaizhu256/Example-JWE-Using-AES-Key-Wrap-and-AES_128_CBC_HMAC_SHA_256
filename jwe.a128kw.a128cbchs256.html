@@ -243,7 +243,6 @@ the Trust Legal Provisions and are provided without warranty as
 described in the Simplified BSD License.
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                    [Page 1]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-2" id="page-2" href="#page-2" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -296,7 +295,6 @@ Registration . . . . . . . . . . . . . . . . . . . . . .  <a href="#page-25">25<
 <a href="#section-11.1">11.1</a>.  Key Entropy and Random Values  . . . . . . . . . . . . .  <a href="#page-27">27</a>
 <a href="#section-11.2">11.2</a>.  Key Protection . . . . . . . . . . . . . . . . . . . . .  <a href="#page-27">27</a>
 <a href="#section-11.3">11.3</a>.  Using Matching Algorithm Strengths . . . . . . . . . . .  <a href="#page-28">28</a>
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                    [Page 2]</span></pre>
@@ -353,7 +351,6 @@ AES_128_CBC_HMAC_SHA_256  . . . . . . . . . . . . . . . .  <a href="#page-41">41
 <a href="#appendix-B.3">B.3</a>.  64-Bit Big-Endian Representation of AAD Length  . . . . .  <a href="#page-49">49</a>
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                    [Page 3]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-4" id="page-4" href="#page-4" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -406,7 +403,6 @@ of STRING, where STRING is a sequence of zero or more Unicode
 [<a href="#ref-UNICODE" title="&quot;The Unicode Standard&quot;">UNICODE</a>] characters.
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                    [Page 4]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-5" id="page-5" href="#page-5" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -455,7 +451,6 @@ value is the empty octet sequence.
 Content Encryption Key (CEK)
 A symmetric key for the AEAD algorithm used to encrypt the
 plaintext to produce the ciphertext and the Authentication Tag.
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                    [Page 5]</span></pre>
@@ -512,7 +507,6 @@ JWE Compact Serialization
 A representation of the JWE as a compact, URL-safe string.
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                    [Page 6]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-7" id="page-7" href="#page-7" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -550,7 +544,6 @@ intended recipient using a symmetric key wrapping algorithm.
 Direct Encryption
 A Key Management Mode in which the CEK value used is the secret
 symmetric key value shared between the parties.
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                    [Page 7]</span></pre>
@@ -600,7 +593,6 @@ JWE Per-Recipient Unprotected Header are used.  In this case, the
 JOSE Header and the JWE Protected Header are the same.
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                    [Page 8]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-9" id="page-9" href="#page-9" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -644,7 +636,6 @@ inclusion of some of these values is OPTIONAL.  The JWE JSON
 Serialization can also encrypt the plaintext to multiple recipients.
 See <a href="#section-7.2">Section 7.2</a> for more information about the JWE JSON
 Serialization.
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                    [Page 9]</span></pre>
@@ -698,7 +689,6 @@ o  Base64url-encode the ciphertext.
 o  Base64url-encode the Authentication Tag.
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 10]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-11" id="page-11" href="#page-11" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -748,7 +738,6 @@ As indicated by the common registry, JWSs and JWEs share a common
 Header Parameter space; when a parameter is used by both
 specifications, its usage must be compatible between the
 specifications.
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 11]</span></pre>
@@ -805,7 +794,6 @@ to the plaintext before encryption.  When used, this Header Parameter
 MUST be integrity protected; therefore, it MUST occur only within the
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 12]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-13" id="page-13" href="#page-13" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -855,7 +843,6 @@ contains the public key to which the JWE was encrypted; this can be
 used to determine the private key needed to decrypt the JWE.
 
 See <a href="#appendix-B">Appendix B</a> of [<a href="#ref-JWS" title="&quot;JSON Web Signature (JWS)&quot;">JWS</a>] for an example "x5c" value.
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 13]</span></pre>
@@ -911,7 +898,6 @@ Public Name: a value that contains a Collision-Resistant Name.  In
 each case, the definer of the name or value needs to take reasonable
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 14]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-15" id="page-15" href="#page-15" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -963,7 +949,6 @@ the result be the JWE Encrypted Key.
 
 5.   When Direct Key Agreement or Direct Encryption are employed, let
 the JWE Encrypted Key be the empty octet sequence.
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 15]</span></pre>
@@ -1018,7 +1003,6 @@ from the encryption operation).
 16.  Compute the encoded ciphertext value BASE64URL(JWE Ciphertext).
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 16]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-17" id="page-17" href="#page-17" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -1070,7 +1054,6 @@ in that order, with each value being separated from the next by
 a single period ('.') character, resulting in exactly four
 delimiting period characters being used.  The JWE JSON
 Serialization is described in <a href="#section-7.2">Section 7.2</a>.
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 17]</span></pre>
@@ -1127,7 +1110,6 @@ JWE Encrypted Key values that were encrypted to a key in that
 recipient's possession.  It is therefore normal to only be able
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 18]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-19" id="page-19" href="#page-19" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -1179,7 +1161,6 @@ succeeded, then the JWE MUST be considered invalid.  Otherwise,
 output the plaintext.  In the JWE JSON Serialization case, also
 return a result to the application indicating for which of the
 recipients the decryption succeeded and failed.
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 19]</span></pre>
@@ -1236,7 +1217,6 @@ object.  This representation is neither optimized for compactness nor
 URL safe.
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 20]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-21" id="page-21" href="#page-21" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -1289,7 +1269,6 @@ recipients
 The "recipients" member value MUST be an array of JSON objects.
 Each object contains information specific to a single recipient.
 This member MUST be present with exactly one array element per
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 21]</span></pre>
@@ -1346,7 +1325,6 @@ Compact Serialization.  This has the desirable property that each JWE
 Encrypted Key value in the "recipients" array is identical to the
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 22]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-23" id="page-23" href="#page-23" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -1396,7 +1374,6 @@ It flattens it by removing the "recipients" member and instead
 placing those members defined for use in the "recipients" array (the
 "header" and "encrypted_key" members) in the top-level JSON object
 (at the same level as the "ciphertext" member).
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 23]</span></pre>
@@ -1452,7 +1429,6 @@ Serialization, the members used will be different.  JWSs have a
 and JWSs do not.
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 24]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-25" id="page-25" href="#page-25" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -1500,7 +1476,6 @@ o  Header Parameter Description: Compression Algorithm
 o  Header Parameter Usage Location(s): JWE
 o  Change Controller: IESG
 o  Specification Document(s): <a href="./rfc7516#section-4.1.3">Section&nbsp;4.1.3 of RFC 7516</a>
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 25]</span></pre>
@@ -1557,7 +1532,6 @@ o  Change Controller: IESG
 o  Specification Document(s): <a href="./rfc7516#section-4.1.11">Section&nbsp;4.1.11 of RFC 7516</a>
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 26]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-27" id="page-27" href="#page-27" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -1606,7 +1580,6 @@ with that key.  Similarly, compromise of the Content Encryption Key
 may result in disclosure of the associated encrypted content.
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 27]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-28" id="page-28" href="#page-28" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -1651,7 +1624,6 @@ errors of encrypted keys.  It is strongly recommended, in the event
 of receiving an improperly formatted key, that the recipient
 substitute a randomly generated CEK and proceed to the next step, to
 mitigate timing attacks.
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 28]</span></pre>
@@ -1706,7 +1678,6 @@ Interchange Format", <a href="./rfc7159">RFC 7159</a>, DOI 10.17487/RFC7159, Mar
 2014, &lt;<a href="http://www.rfc-editor.org/info/rfc7159">http://www.rfc-editor.org/info/rfc7159</a>&gt;.
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 29]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-30" id="page-30" href="#page-30" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -1757,7 +1728,6 @@ DOI 10.17487/RFC4086, June 2005,
 &lt;<a href="http://www.rfc-editor.org/info/rfc4086">http://www.rfc-editor.org/info/rfc4086</a>&gt;.
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 30]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-31" id="page-31" href="#page-31" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -1772,7 +1742,6 @@ Eastlake, D., Reagle, J., Hirsch, F., and T. Roessler,
 Wide Web Consortium Recommendation
 REC-xmlenc-core1-20130411, April 2013,
 &lt;<a href="http://www.w3.org/TR/2013/REC-xmlenc-core1-20130411/">http://www.w3.org/TR/2013/REC-xmlenc-core1-20130411/</a>&gt;.
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 31]</span></pre>
@@ -1823,7 +1792,6 @@ JSON array notation) is:
 234, 64, 252]
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 32]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-33" id="page-33" href="#page-33" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -1865,7 +1833,6 @@ UfCAiJVeESOjJDZPYHdHY8v1b-o-Z2X5tvLx-TCekf7oxyeKDUqKWjis",
 AlWAyLWybqq6t16VFd7hQd0y6flUK4SlOydB61gwanOsXGOAOv82cHq0E3
 eL4HrtZkUuKvnPrMnsUUFlfUdybVzxyjz9JF_XyaY14ardLSjf4L_FNY"
 }
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 33]</span></pre>
@@ -1916,7 +1883,6 @@ Initialization Vector) gives this value:
 48V1_ALb6US04U3b
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 34]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-35" id="page-35" href="#page-35" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -1958,7 +1924,6 @@ Encoding this JWE Authentication Tag as BASE64URL(JWE Authentication
 Tag) gives this value:
 
 XFBoMYUZodetZdvTiFvSkQ
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 35]</span></pre>
@@ -2010,7 +1975,6 @@ of this plaintext (using JSON array notation) is:
 112, 114, 111, 115, 112, 101, 114, 46]
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 36]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-37" id="page-37" href="#page-37" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -2039,7 +2003,6 @@ Generate a 256-bit random CEK.  In this example, the key value is:
 [4, 211, 31, 197, 84, 157, 252, 254, 11, 100, 157, 250, 63, 170, 106,
 206, 107, 124, 212, 45, 111, 107, 9, 219, 200, 177, 0, 240, 143, 156,
 44, 207]
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 37]</span></pre>
@@ -2083,7 +2046,6 @@ odApKdnqECHWw0J-F0JWnUd6D2B_1TvF9mXA2Qx-iGYn8OVV1Bsmp6qU",
 tUkTRclIfuEPmNsNDPbLoLqqCVznFbvdB7x-Tl-m0l_eFTj2KiqwGqE9PZ
 B9nNTwMVvH3VRRSLWACvPnSiwP8N5Usy-WRXS-V7TbpxIhvepTfE0NNo"
 }
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 38]</span></pre>
@@ -2135,7 +2097,6 @@ Initialization Vector) gives this value:
 AxY8DCtDaGlsbGljb3RoZQ
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 39]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-40" id="page-40" href="#page-40" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -2185,7 +2146,6 @@ result is the string BASE64URL(UTF8(JWE Protected Header)) || '.' ||
 BASE64URL(JWE Encrypted Key) || '.' || BASE64URL(JWE Initialization
 Vector) || '.' || BASE64URL(JWE Ciphertext) || '.' || BASE64URL(JWE
 Authentication Tag).
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 40]</span></pre>
@@ -2242,7 +2202,6 @@ the Authentication Tag.
 {"alg":"A128KW","enc":"A128CBC-HS256"}
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 41]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-42" id="page-42" href="#page-42" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -2293,7 +2252,6 @@ Encoding this JWE Initialization Vector as BASE64URL(JWE
 Initialization Vector) gives this value:
 
 AxY8DCtDaGlsbGljb3RoZQ
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 42]</span></pre>
@@ -2347,7 +2305,6 @@ Vector) || '.' || BASE64URL(JWE Ciphertext) || '.' || BASE64URL(JWE
 Authentication Tag).
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 43]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-44" id="page-44" href="#page-44" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -2388,7 +2345,6 @@ not repeated here.
 The plaintext, the CEK, JWE Initialization Vector, and JWE Protected
 Header are shared by all recipients (which must be the case, since
 the ciphertext and Authentication Tag are also shared).
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 44]</span></pre>
@@ -2444,7 +2400,6 @@ are:
 "jku":"https://server.example.com/keys.jwks"}
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 45]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-46" id="page-46" href="#page-46" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -2493,7 +2448,6 @@ Tag) gives this value:
 Mz-VPPyU4RlcuYv1IwIvzw
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 46]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-47" id="page-47" href="#page-47" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -2539,7 +2493,6 @@ structure.
 
 The values in this example are the same as those for the second
 recipient of the previous example in <a href="#appendix-A.4">Appendix A.4</a>.
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 47]</span></pre>
@@ -2594,7 +2547,6 @@ which is:
 206]
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 48]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-49" id="page-49" href="#page-49" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -2644,7 +2596,6 @@ The Initialization Vector value used in this example is:
 
 [3, 22, 60, 12, 43, 67, 104, 105, 108, 108, 105, 99, 111, 116, 104,
 101]
-
 
 
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 49]</span></pre>
@@ -2701,7 +2652,6 @@ Thanks to Axel Nennker, Emmanuel Raviart, Brian Campbell, and Edmund
 Jay for validating the examples in this specification.
 
 
-
 <span class="grey">Jones &amp; Hildebrand           Standards Track                   [Page 50]</span></pre>
 <hr class='noprint' style='width: 96ex;' align='left'/><!--NewPage--><pre class='newpage'><a name="page-51" id="page-51" href="#page-51" class="invisible"> </a>
 <span class="grey"><a href="./rfc7516">RFC 7516</a>                JSON Web Encryption (JWE)               May 2015</span>
@@ -2734,7 +2684,6 @@ Joe Hildebrand
 Cisco Systems, Inc.
 
 EMail: jhildebr@cisco.com
-
 
 
 Jones &amp; Hildebrand           Standards Track                   [Page 51]
@@ -3088,7 +3037,6 @@ Jones &amp; Hildebrand           Standards Track                   [Page 51]
     assertJsonEqual(plaintext, "Live long and prosper.");
     console.error("plaintext - " + plaintext);
 }());
-
 
 
 (async function () {

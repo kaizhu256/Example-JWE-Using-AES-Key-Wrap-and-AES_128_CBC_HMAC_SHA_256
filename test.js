@@ -185,7 +185,6 @@
 }((typeof globalThis === "object" && globalThis) || window));
 
 
-
 // run shared js-env code - function
 (async function (local) {
     "use strict";
