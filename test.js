@@ -193,7 +193,7 @@
     let base64urlFromBuffer;
     let base64urlToBuffer;
     let cryptoDecryptBrowser;
-    let cryptoDecryptNode;
+    //!! let cryptoDecryptNode;
     let cryptoEncryptBrowser;
     let cryptoValidateHeader;
     let runMe;
@@ -317,54 +317,54 @@
             + "." + base64urlFromBuffer(tmp.subarray(-16))
         );
     };
-    cryptoDecryptNode = async function (kek, plaintext, header, cek, iv) {
-        let crypto;
-        let tmp;
-        crypto = globalThis.crypto;
-        header = header || {
-            "alg": "A256KW",
-            "enc": "A256GCM"
-        };
-        kek = base64urlToBuffer(kek);
-        cek = base64urlToBuffer(cek || base64urlFromBuffer(
-            crypto.getRandomValues(new Uint8Array(
-                header.enc !== "A256GCM"
-                ? 16
-                : 32
-            ))
-        ));
-        // validate header
-        cryptoValidateHeader(header, kek, cek, 0);
-        kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
-            "wrapKey"
-        ]);
-        header = base64urlFromBuffer(
-            new TextEncoder().encode(JSON.stringify(header))
-        );
-        iv = iv || base64urlFromBuffer(
-            crypto.getRandomValues(new Uint8Array(12))
-        );
-        cek = await crypto.subtle.importKey("raw", cek, {
-            name: "AES-GCM"
-        }, true, [
-            "encrypt"
-        ]);
-        tmp = new Uint8Array(await crypto.subtle.encrypt({
-            additionalData: new TextEncoder().encode(header),
-            iv: base64urlToBuffer(iv),
-            name: "AES-GCM"
-        }, cek, new TextEncoder().encode(plaintext)));
-        cek = base64urlFromBuffer(new Uint8Array(
-            await crypto.subtle.wrapKey("raw", cek, kek, "AES-KW")
-        ));
-        return (
-            header
-            + "." + cek
-            + "." + iv
-            + "." + base64urlFromBuffer(tmp.subarray(0, -16))
-            + "." + base64urlFromBuffer(tmp.subarray(-16))
-        );
-    };
+    //!! cryptoDecryptNode = async function (kek, plaintext, header, cek, iv) {
+        //!! let crypto;
+        //!! let tmp;
+        //!! crypto = globalThis.crypto;
+        //!! header = header || {
+            //!! "alg": "A256KW",
+            //!! "enc": "A256GCM"
+        //!! };
+        //!! kek = base64urlToBuffer(kek);
+        //!! cek = base64urlToBuffer(cek || base64urlFromBuffer(
+            //!! crypto.getRandomValues(new Uint8Array(
+                //!! header.enc !== "A256GCM"
+                //!! ? 16
+                //!! : 32
+            //!! ))
+        //!! ));
+        //!! // validate header
+        //!! cryptoValidateHeader(header, kek, cek, 0);
+        //!! kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
+            //!! "wrapKey"
+        //!! ]);
+        //!! header = base64urlFromBuffer(
+            //!! new TextEncoder().encode(JSON.stringify(header))
+        //!! );
+        //!! iv = iv || base64urlFromBuffer(
+            //!! crypto.getRandomValues(new Uint8Array(12))
+        //!! );
+        //!! cek = await crypto.subtle.importKey("raw", cek, {
+            //!! name: "AES-GCM"
+        //!! }, true, [
+            //!! "encrypt"
+        //!! ]);
+        //!! tmp = new Uint8Array(await crypto.subtle.encrypt({
+            //!! additionalData: new TextEncoder().encode(header),
+            //!! iv: base64urlToBuffer(iv),
+            //!! name: "AES-GCM"
+        //!! }, cek, new TextEncoder().encode(plaintext)));
+        //!! cek = base64urlFromBuffer(new Uint8Array(
+            //!! await crypto.subtle.wrapKey("raw", cek, kek, "AES-KW")
+        //!! ));
+        //!! return (
+            //!! header
+            //!! + "." + cek
+            //!! + "." + iv
+            //!! + "." + base64urlFromBuffer(tmp.subarray(0, -16))
+            //!! + "." + base64urlFromBuffer(tmp.subarray(-16))
+        //!! );
+    //!! };
     cryptoValidateHeader = function (header, kek, cek, cekPadding) {
         assertOrThrow((
             (header.alg === "A128KW" && header.enc === "A128GCM")
@@ -382,7 +382,7 @@
         ), "jwe failed validation");
     };
     runMe = async function () {
-        debugInline("sldfkj");
+        //!! debugInline("sldfkj");
         if (!local.isBrowser) {
             return;
         }
@@ -401,6 +401,7 @@
             "enc": "A128GCM"
         }, "aY5_Ghmk9KxWPBLu_glx1w", "Qx0pmsDa8KnJc9Jo");
         console.log("encrypted jwe - " + myJwe);
+        // encrypted jwe - eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC04MjE2MGFkOTFhYzgiLCJlbmMiOiJBMTI4R0NNIn0.CBI6oDw8MydIx1IBntf_lQcw2MmJKIQx.Qx0pmsDa8KnJc9Jo.AwliP-KmWgsZ37BvzCefNen6VTbRK3QMA4TkvRkH0tP1bTdhtFJgJxeVmJkLD61A1hnWGetdg11c9ADsnWgL56NyxwSYjU1ZEHcGkd3EkU0vjHi9gTlb90qSYFfeF0LwkcTtjbYKCsiNJQkcIp1yeM03OmuiYSoYJVSpf7ej6zaYcMv3WwdxDFl8REwOhNImk2Xld2JXq6BR53TSFkyT7PwVLuq-1GwtGHlQeg7gDT6xW0JqHDPn_H-puQsmthc9Zg0ojmJfqqFvETUxLAF-KjcBTS5dNy6egwkYtOt8EIHK-oEsKYtZRaa8Z7MOZ7UGxGIMvEmxrGCPeJa14slv2-gaqK0kEThkaSqdYw0FkQZF.ER7MWJZ1FBI_NKvn7Zb1Lw // jslint ignore:line
         assertJsonEqual(myJwe, (
             // protectedHeader - Protected JWE header
             "eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC"
@@ -423,7 +424,10 @@
             // tag - Authentication tag
             + "ER7MWJZ1FBI_NKvn7Zb1Lw"
         ));
-        myPlaintext = await cryptoDecryptBrowser("GZy6sIZ6wl9NJOKB-jnmVQ", myJwe);
+        myPlaintext = await cryptoDecryptBrowser(
+            "GZy6sIZ6wl9NJOKB-jnmVQ",
+            myJwe
+        );
         console.log("decrypted jwe - " + myPlaintext);
         assertJsonEqual(myPlaintext, (
             "You can trust us to stick with you through thick and "
