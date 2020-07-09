@@ -493,7 +493,14 @@
         while (jj < 6) {
             ii = 1;
             while (ii <= nn) {
-                aa.set(rr.slice(ii * 8, ii * 8 + 8), 8);
+                aa[8] = rr[ii * 8];
+                aa[9] = rr[ii * 8 + 1];
+                aa[10] = rr[ii * 8 + 2];
+                aa[11] = rr[ii * 8 + 3];
+                aa[12] = rr[ii * 8 + 4];
+                aa[13] = rr[ii * 8 + 5];
+                aa[14] = rr[ii * 8 + 6];
+                aa[15] = rr[ii * 8 + 7];
                 bb = crypto.createCipheriv((
                     kek.byteLength === 16
                     ? "aes-128-cbc"
@@ -505,7 +512,14 @@
                 aa.set(bb.update(aa));
                 bb = bb.final();
                 aa.set(bb, 8 - bb.byteLength);
-                rr.set(aa.slice(8), ii * 8);
+                rr[ii * 8 + 0] = aa[8];
+                rr[ii * 8 + 1] = aa[9];
+                rr[ii * 8 + 2] = aa[10];
+                rr[ii * 8 + 3] = aa[11];
+                rr[ii * 8 + 4] = aa[12];
+                rr[ii * 8 + 5] = aa[13];
+                rr[ii * 8 + 6] = aa[14];
+                rr[ii * 8 + 7] = aa[15];
                 tt = jj * nn + ii;
                 aa[4] ^= (tt >>> 24) & 0xff;
                 aa[5] ^= (tt >> 16) & 0xff;
