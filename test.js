@@ -373,7 +373,7 @@
         ), "jwe failed validation");
     };
     runMe = async function () {
-        if (!local.isBrowser) {
+        if (!isBrowser) {
             return;
         }
         // 4.1 Wrap 128 bits of Key Data with a 128-bit KEK
@@ -657,7 +657,7 @@
         //!! let pp;
         //!! let rr;
         let tmp;
-        if (local.isBrowser) {
+        if (isBrowser) {
             return;
         }
         kek = base64urlToBuffer("GZy6sIZ6wl9NJOKB-jnmVQ");
