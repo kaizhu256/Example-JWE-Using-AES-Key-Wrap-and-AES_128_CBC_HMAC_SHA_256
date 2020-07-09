@@ -382,7 +382,7 @@
     jweKeyUnwrapNode = function (kek, cek) {
     /*
      * this function will A256KW-wrap <cek> with given <kek>
-     * https://tools.ietf.org/html/rfc3394#section-2.2.1
+     * https://tools.ietf.org/html/rfc3394#section-2.2.2
      */
         let aa;
         let bb;
@@ -392,38 +392,37 @@
         let nn;
         let rr;
         let tt;
-        // 2.2.1 Key Wrap
-        // Inputs: Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
+        // 2.2.2 Key Unwrap
+        // https://tools.ietf.org/html/rfc3394#section-2.2.2
+        // Inputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}, and
         // Key, K (the KEK).
-        // Outputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}.
+        // Outputs: Plaintext, n 64-bit values {P0, P1, K, Pn}.
         // 1) Initialize variables.
-        // Set A = IV, an initial value (see 2.2.3)
+        // Set A = C[0]
         // For i = 1 to n
-        // R[i] = P[i]
-        nn = cek.byteLength >> 3;
-        aa = Buffer.alloc(16, 0xa6);
+        // R[i] = C[i]
+        nn = (cek.byteLength >> 3) - 1;
+        aa = Buffer.from(cek);
         iv = Buffer.alloc(16);
-        rr = Buffer.concat([
-            Buffer.alloc(8), cek
-        ]);
-        // 2) Calculate intermediate values.
-        // For j = 0 to 5
-        // For i = 1 to n
-        // B = AES(K, A | R[i])
-        // A = MSB(64, B) ^ t where t = (n*j)+i
+        rr = Buffer.from(cek.slice(0, -8));
+        // 2) Compute intermediate values.
+        // For j = 5 to 0
+        // For i = n to 1
+        // B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
+        // A = MSB(64, B)
         // R[i] = LSB(64, B)
         jj = 0;
         while (jj < 6) {
             ii = 1;
             while (ii <= nn) {
-                aa[8] = rr[8 * ii];
-                aa[9] = rr[8 * ii + 1];
-                aa[10] = rr[8 * ii + 2];
-                aa[11] = rr[8 * ii + 3];
-                aa[12] = rr[8 * ii + 4];
-                aa[13] = rr[8 * ii + 5];
-                aa[14] = rr[8 * ii + 6];
-                aa[15] = rr[8 * ii + 7];
+                aa[8] = rr[ii * 8];
+                aa[9] = rr[ii * 8 + 1];
+                aa[10] = rr[ii * 8 + 2];
+                aa[11] = rr[ii * 8 + 3];
+                aa[12] = rr[ii * 8 + 4];
+                aa[13] = rr[ii * 8 + 5];
+                aa[14] = rr[ii * 8 + 6];
+                aa[15] = rr[ii * 8 + 7];
                 bb = crypto.createCipheriv((
                     kek.byteLength === 16
                     ? "aes-128-cbc"
@@ -435,14 +434,14 @@
                 aa.set(bb.update(aa));
                 bb = bb.final();
                 aa.set(bb, 8 - bb.byteLength);
-                rr[8 * ii + 0] = aa[8];
-                rr[8 * ii + 1] = aa[9];
-                rr[8 * ii + 2] = aa[10];
-                rr[8 * ii + 3] = aa[11];
-                rr[8 * ii + 4] = aa[12];
-                rr[8 * ii + 5] = aa[13];
-                rr[8 * ii + 6] = aa[14];
-                rr[8 * ii + 7] = aa[15];
+                rr[ii * 8 + 0] = aa[8];
+                rr[ii * 8 + 1] = aa[9];
+                rr[ii * 8 + 2] = aa[10];
+                rr[ii * 8 + 3] = aa[11];
+                rr[ii * 8 + 4] = aa[12];
+                rr[ii * 8 + 5] = aa[13];
+                rr[ii * 8 + 6] = aa[14];
+                rr[ii * 8 + 7] = aa[15];
                 tt = jj * nn + ii;
                 aa[4] ^= (tt >>> 24) & 0xff;
                 aa[5] ^= (tt >> 16) & 0xff;
@@ -452,10 +451,9 @@
             }
             jj += 1;
         }
-        // 3) Output the results.
-        // Set C[0] = A
+        // 3) Output results.
         // For i = 1 to n
-        // C[i] = R[i]
+        // P[i] = R[i]
         rr[0] = aa[0];
         rr[1] = aa[1];
         rr[2] = aa[2];
@@ -503,14 +501,14 @@
         while (jj < 6) {
             ii = 1;
             while (ii <= nn) {
-                aa[8] = rr[8 * ii];
-                aa[9] = rr[8 * ii + 1];
-                aa[10] = rr[8 * ii + 2];
-                aa[11] = rr[8 * ii + 3];
-                aa[12] = rr[8 * ii + 4];
-                aa[13] = rr[8 * ii + 5];
-                aa[14] = rr[8 * ii + 6];
-                aa[15] = rr[8 * ii + 7];
+                aa[8] = rr[ii * 8];
+                aa[9] = rr[ii * 8 + 1];
+                aa[10] = rr[ii * 8 + 2];
+                aa[11] = rr[ii * 8 + 3];
+                aa[12] = rr[ii * 8 + 4];
+                aa[13] = rr[ii * 8 + 5];
+                aa[14] = rr[ii * 8 + 6];
+                aa[15] = rr[ii * 8 + 7];
                 bb = crypto.createCipheriv((
                     kek.byteLength === 16
                     ? "aes-128-cbc"
@@ -522,14 +520,14 @@
                 aa.set(bb.update(aa));
                 bb = bb.final();
                 aa.set(bb, 8 - bb.byteLength);
-                rr[8 * ii + 0] = aa[8];
-                rr[8 * ii + 1] = aa[9];
-                rr[8 * ii + 2] = aa[10];
-                rr[8 * ii + 3] = aa[11];
-                rr[8 * ii + 4] = aa[12];
-                rr[8 * ii + 5] = aa[13];
-                rr[8 * ii + 6] = aa[14];
-                rr[8 * ii + 7] = aa[15];
+                rr[ii * 8 + 0] = aa[8];
+                rr[ii * 8 + 1] = aa[9];
+                rr[ii * 8 + 2] = aa[10];
+                rr[ii * 8 + 3] = aa[11];
+                rr[ii * 8 + 4] = aa[12];
+                rr[ii * 8 + 5] = aa[13];
+                rr[ii * 8 + 6] = aa[14];
+                rr[ii * 8 + 7] = aa[15];
                 tt = jj * nn + ii;
                 aa[4] ^= (tt >>> 24) & 0xff;
                 aa[5] ^= (tt >> 16) & 0xff;
