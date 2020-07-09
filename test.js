@@ -402,19 +402,24 @@
         // For i = 1 to n
         // R[i] = C[i]
         nn = (cek.byteLength >> 3) - 1;
-        aa = Buffer.from(cek);
+        aa = Buffer.from(cek.slice(0, 16));
         iv = Buffer.alloc(16);
-        rr = Buffer.from(cek.slice(0, -8));
+        rr = Buffer.from(cek.slice(8));
         // 2) Compute intermediate values.
         // For j = 5 to 0
         // For i = n to 1
         // B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
         // A = MSB(64, B)
         // R[i] = LSB(64, B)
-        jj = 0;
-        while (jj < 6) {
-            ii = 1;
-            while (ii <= nn) {
+        jj = 5;
+        while (jj >= 0) {
+            ii = nn - 1;
+            while (ii >= 0) {
+                tt = jj * nn + ii + 1;
+                aa[4] ^= (tt >>> 24) & 0xff;
+                aa[5] ^= (tt >> 16) & 0xff;
+                aa[6] ^= (tt >> 8) & 0xff;
+                aa[7] ^= tt & 0xff;
                 aa[8] = rr[ii * 8];
                 aa[9] = rr[ii * 8 + 1];
                 aa[10] = rr[ii * 8 + 2];
@@ -423,7 +428,7 @@
                 aa[13] = rr[ii * 8 + 5];
                 aa[14] = rr[ii * 8 + 6];
                 aa[15] = rr[ii * 8 + 7];
-                bb = crypto.createCipheriv((
+                bb = crypto.createDecipheriv((
                     kek.byteLength === 16
                     ? "aes-128-cbc"
                     : kek.byteLength === 24
@@ -442,26 +447,13 @@
                 rr[ii * 8 + 5] = aa[13];
                 rr[ii * 8 + 6] = aa[14];
                 rr[ii * 8 + 7] = aa[15];
-                tt = jj * nn + ii;
-                aa[4] ^= (tt >>> 24) & 0xff;
-                aa[5] ^= (tt >> 16) & 0xff;
-                aa[6] ^= (tt >> 8) & 0xff;
-                aa[7] ^= tt & 0xff;
-                ii += 1;
+                ii -= 1;
             }
-            jj += 1;
+            jj -= 1;
         }
         // 3) Output results.
         // For i = 1 to n
         // P[i] = R[i]
-        rr[0] = aa[0];
-        rr[1] = aa[1];
-        rr[2] = aa[2];
-        rr[3] = aa[3];
-        rr[4] = aa[4];
-        rr[5] = aa[5];
-        rr[6] = aa[6];
-        rr[7] = aa[7];
         return rr;
     };
     jweKeyWrapNode = function (kek, cek) {
@@ -501,14 +493,7 @@
         while (jj < 6) {
             ii = 1;
             while (ii <= nn) {
-                aa[8] = rr[ii * 8];
-                aa[9] = rr[ii * 8 + 1];
-                aa[10] = rr[ii * 8 + 2];
-                aa[11] = rr[ii * 8 + 3];
-                aa[12] = rr[ii * 8 + 4];
-                aa[13] = rr[ii * 8 + 5];
-                aa[14] = rr[ii * 8 + 6];
-                aa[15] = rr[ii * 8 + 7];
+                aa.set(rr.slice(ii * 8, ii * 8 + 8), 8);
                 bb = crypto.createCipheriv((
                     kek.byteLength === 16
                     ? "aes-128-cbc"
@@ -520,14 +505,7 @@
                 aa.set(bb.update(aa));
                 bb = bb.final();
                 aa.set(bb, 8 - bb.byteLength);
-                rr[ii * 8 + 0] = aa[8];
-                rr[ii * 8 + 1] = aa[9];
-                rr[ii * 8 + 2] = aa[10];
-                rr[ii * 8 + 3] = aa[11];
-                rr[ii * 8 + 4] = aa[12];
-                rr[ii * 8 + 5] = aa[13];
-                rr[ii * 8 + 6] = aa[14];
-                rr[ii * 8 + 7] = aa[15];
+                rr.set(aa.slice(8), ii * 8);
                 tt = jj * nn + ii;
                 aa[4] ^= (tt >>> 24) & 0xff;
                 aa[5] ^= (tt >> 16) & 0xff;
@@ -677,16 +655,20 @@
             return;
         }
         // 4.1 Wrap 128 bits of Key Data with a 128-bit KEK
-        cek = hexToBuffer("00112233445566778899AABBCCDDEEFF");
-        kek = hexToBuffer("000102030405060708090A0B0C0D0E0F");
+        cek = hexToBuffer("00112233445566778899aabbccddeeff");
+        kek = hexToBuffer("000102030405060708090a0b0c0d0e0f");
         tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
         assertEqual(tmp, "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5");
         console.log("wrapped-key - " + tmp);
+        cek = hexFromBuffer(jweKeyUnwrapNode(kek, hexToBuffer(tmp)));
+        assertEqual(cek, "00112233445566778899aabbccddeeff");
         // 4.2 Wrap 128 bits of Key Data with a 192-bit KEK
         cek = hexToBuffer("00112233445566778899aabbccddeeff");
         kek = hexToBuffer("000102030405060708090a0b0c0d0e0f1011121314151617");
         tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
         assertEqual(tmp, "96778b25ae6ca435f92b5b97c050aed2468ab8a17ad84e5d");
+        cek = hexFromBuffer(jweKeyUnwrapNode(kek, hexToBuffer(tmp)));
+        assertEqual(cek, "00112233445566778899aabbccddeeff");
         // 4.3 Wrap 128 bits of Key Data with a 256-bit KEK
         cek = hexToBuffer("00112233445566778899aabbccddeeff");
         kek = hexToBuffer(
@@ -694,6 +676,8 @@
         );
         tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
         assertEqual(tmp, "64e8c3f9ce0f5ba263e9777905818a2a93c8191e7d6e8ae7");
+        cek = hexFromBuffer(jweKeyUnwrapNode(kek, hexToBuffer(tmp)));
+        assertEqual(cek, "00112233445566778899aabbccddeeff");
         // 4.4 Wrap 192 bits of Key Data with a 192-bit KEK
         cek = hexToBuffer("00112233445566778899aabbccddeeff0001020304050607");
         kek = hexToBuffer("000102030405060708090a0b0c0d0e0f1011121314151617");
@@ -701,6 +685,8 @@
         assertEqual(tmp, (
             "031d33264e15d33268f24ec260743edce1c6c7ddee725a936ba814915c6762d2"
         ));
+        cek = hexFromBuffer(jweKeyUnwrapNode(kek, hexToBuffer(tmp)));
+        assertEqual(cek, "00112233445566778899aabbccddeeff0001020304050607");
         // 4.5 Wrap 192 bits of Key Data with a 256-bit KEK
         cek = hexToBuffer(
             "00112233445566778899aabbccddeeff000102030405060708090a0b0c0d0e0f"
@@ -713,6 +699,11 @@
             "28c9f404c4b810f4cbccb35cfb87f8263f5786e2d80ed326"
             + "cbc7f0e71a99f43bfb988b9b7a02dd21"
         ));
+        cek = hexFromBuffer(jweKeyUnwrapNode(kek, hexToBuffer(tmp)));
+        assertEqual(
+            cek,
+            "00112233445566778899aabbccddeeff000102030405060708090a0b0c0d0e0f"
+        );
         return;
     };
     await runMe();
