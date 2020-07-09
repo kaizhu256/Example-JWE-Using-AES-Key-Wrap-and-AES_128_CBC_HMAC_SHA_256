@@ -169,7 +169,7 @@
 // run shared js-env code - function
 (async function (local) {
     "use strict";
-    let assertJsonEqual;
+    let assertEqual;
     let assertOrThrow;
     let base64urlFromBuffer;
     let base64urlToBuffer;
@@ -191,8 +191,22 @@
     } else {
         crypto = require("crypto");
     }
-    assertJsonEqual = local.assertJsonEqual;
-    assertOrThrow = local.assertOrThrow;
+    assertEqual = function (aa, bb) {
+    /*
+     * this function will assert <aa> === <bb>
+     */
+        if (aa !== bb) {
+            throw new Error(JSON.stringify(aa) + " !== " + JSON.stringify(bb));
+        }
+    };
+    assertOrThrow = function (passed, msg) {
+    /*
+     * this function will throw <msg> if <passed> is falsy
+     */
+        if (!passed) {
+            throw new Error(msg);
+        }
+    };
     base64urlFromBuffer = function (buf) {
     /*
      * this function will base64url-encode <buf> to str
@@ -393,7 +407,7 @@
         cek = hexFromBuffer(new Uint8Array(
             await crypto.subtle.wrapKey("raw", cek, kek, "AES-KW")
         ));
-        assertJsonEqual(
+        assertEqual(
             cek,
             "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5"
         );
@@ -413,7 +427,7 @@
         }, "aY5_Ghmk9KxWPBLu_glx1w", "Qx0pmsDa8KnJc9Jo");
         console.log("encrypted jwe - " + myJwe);
         // encrypted jwe - eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC04MjE2MGFkOTFhYzgiLCJlbmMiOiJBMTI4R0NNIn0.CBI6oDw8MydIx1IBntf_lQcw2MmJKIQx.Qx0pmsDa8KnJc9Jo.AwliP-KmWgsZ37BvzCefNen6VTbRK3QMA4TkvRkH0tP1bTdhtFJgJxeVmJkLD61A1hnWGetdg11c9ADsnWgL56NyxwSYjU1ZEHcGkd3EkU0vjHi9gTlb90qSYFfeF0LwkcTtjbYKCsiNJQkcIp1yeM03OmuiYSoYJVSpf7ej6zaYcMv3WwdxDFl8REwOhNImk2Xld2JXq6BR53TSFkyT7PwVLuq-1GwtGHlQeg7gDT6xW0JqHDPn_H-puQsmthc9Zg0ojmJfqqFvETUxLAF-KjcBTS5dNy6egwkYtOt8EIHK-oEsKYtZRaa8Z7MOZ7UGxGIMvEmxrGCPeJa14slv2-gaqK0kEThkaSqdYw0FkQZF.ER7MWJZ1FBI_NKvn7Zb1Lw // jslint ignore:line
-        assertJsonEqual(myJwe, (
+        assertEqual(myJwe, (
             // protectedHeader - Protected JWE header
             "eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC"
             + "04MjE2MGFkOTFhYzgiLCJlbmMiOiJBMTI4R0NNIn0"
@@ -441,7 +455,7 @@
             myJwe
         );
         console.log("decrypted jwe - " + myPlaintext);
-        assertJsonEqual(myPlaintext, (
+        assertEqual(myPlaintext, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
             + "keep any secret of yours\u2013closer than you keep it "
@@ -461,7 +475,7 @@
         console.log("encrypted jwe - " + myJwe);
         myPlaintext = await cryptoDecryptBrowser(myKek, myJwe);
         console.log("decrypted jwe - " + myPlaintext);
-        assertJsonEqual(myPlaintext, (
+        assertEqual(myPlaintext, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
             + "keep any secret of yours\u2013closer than you keep it "
