@@ -174,13 +174,13 @@
     let base64urlFromBuffer;
     let base64urlToBuffer;
     let crypto;
-    let cryptoDecryptBrowser;
-    let cryptoEncryptBrowser;
-    let cryptoKeyWrapNode;
-    let cryptoValidateHeader;
     let hexFromBuffer;
     let hexToBuffer;
     let isBrowser;
+    let jweDecryptBrowser;
+    let jweEncryptBrowser;
+    let jweKeyWrapNode;
+    let jweValidateHeader;
     let runMe;
     crypto = globalThis.crypto;
     if (
@@ -284,7 +284,7 @@
         }
         return buf;
     };
-    cryptoDecryptBrowser = async function (kek, jwe) {
+    jweDecryptBrowser = async function (kek, jwe) {
         let cek;
         let ciphertext;
         let header;
@@ -302,7 +302,7 @@
         cek = base64urlToBuffer(cek);
         kek = base64urlToBuffer(kek);
         // validate header
-        cryptoValidateHeader(JSON.parse(new TextDecoder().decode(
+        jweValidateHeader(JSON.parse(new TextDecoder().decode(
             base64urlToBuffer(header)
         )), kek, cek, 8);
         kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
@@ -324,7 +324,7 @@
         }, cek, ciphertext));
         return new TextDecoder().decode(tmp);
     };
-    cryptoEncryptBrowser = async function (kek, plaintext, header, cek, iv) {
+    jweEncryptBrowser = async function (kek, plaintext, header, cek, iv) {
         let tmp;
         header = header || {
             "alg": "A256KW",
@@ -339,7 +339,7 @@
             ))
         ));
         // validate header
-        cryptoValidateHeader(header, kek, cek, 0);
+        jweValidateHeader(header, kek, cek, 0);
         kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
             "wrapKey"
         ]);
@@ -370,7 +370,90 @@
             + "." + base64urlFromBuffer(tmp.subarray(-16))
         );
     };
-    cryptoValidateHeader = function (header, kek, cek, cekPadding) {
+    jweKeyWrapNode = function (kek, cek) {
+    /*
+     * this function will a256kw-wrap <cek> with given <kek>
+     */
+        let aa;
+        let bb;
+        let ii;
+        let iv;
+        let jj;
+        let nn;
+        let rr;
+        let tt;
+        // https://tools.ietf.org/html/rfc3394#section-2.2.1
+        // 2.2.1 Key Wrap
+        // Inputs: Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
+        // Key, K (the KEK).
+        // Outputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}.
+        // 1) Initialize variables.
+        // Set A = IV, an initial value (see 2.2.3)
+        // For i = 1 to n
+        // R[i] = P[i]
+        nn = cek.byteLength >> 3;
+        aa = Buffer.alloc(16, 0xa6);
+        iv = Buffer.alloc(16);
+        rr = Buffer.concat([
+            Buffer.alloc(8), cek
+        ]);
+        // 2) Calculate intermediate values.
+        // For j = 0 to 5
+        // For i = 1 to n
+        // B = AES(K, A | R[i])
+        // A = MSB(64, B) ^ t where t = (n*j)+i
+        // R[i] = LSB(64, B)
+        jj = 0;
+        while (jj < 6) {
+            ii = 1;
+            while (ii <= nn) {
+                aa[8] = rr[8 * ii];
+                aa[9] = rr[8 * ii + 1];
+                aa[10] = rr[8 * ii + 2];
+                aa[11] = rr[8 * ii + 3];
+                aa[12] = rr[8 * ii + 4];
+                aa[13] = rr[8 * ii + 5];
+                aa[14] = rr[8 * ii + 6];
+                aa[15] = rr[8 * ii + 7];
+                bb = crypto.createCipheriv("aes-128-cbc", kek, iv);
+                bb.setAutoPadding(false);
+                aa.set(bb.update(aa));
+                bb = bb.final();
+                aa.set(bb, 8 - bb.byteLength);
+                rr[8 * ii + 0] = aa[8];
+                rr[8 * ii + 1] = aa[9];
+                rr[8 * ii + 2] = aa[10];
+                rr[8 * ii + 3] = aa[11];
+                rr[8 * ii + 4] = aa[12];
+                rr[8 * ii + 5] = aa[13];
+                rr[8 * ii + 6] = aa[14];
+                rr[8 * ii + 7] = aa[15];
+                tt = jj * nn + ii;
+                aa[4] ^= (tt >>> 24) & 0xff;
+                aa[5] ^= (tt >> 16) & 0xff;
+                aa[6] ^= (tt >> 8) & 0xff;
+                aa[7] ^= tt & 0xff;
+                ii += 1;
+            }
+            jj += 1;
+        }
+        // 3) Output the results.
+        // Set C[0] = A
+        // For i = 1 to n
+        // C[i] = R[i]
+        rr[0] = aa[0];
+        rr[1] = aa[1];
+        rr[2] = aa[2];
+        rr[3] = aa[3];
+        rr[4] = aa[4];
+        rr[5] = aa[5];
+        rr[6] = aa[6];
+        rr[7] = aa[7];
+    };
+    jweValidateHeader = function (header, kek, cek, cekPadding) {
+    /*
+     * this function will validate <header>
+     */
         assertOrThrow((
             (header.alg === "A128KW" && header.enc === "A128GCM")
             || (header.alg === "A256KW" && header.enc === "A256GCM")
@@ -414,7 +497,7 @@
         let myJwe;
         let myKek;
         let myPlaintext;
-        myJwe = await cryptoEncryptBrowser("GZy6sIZ6wl9NJOKB-jnmVQ", (
+        myJwe = await jweEncryptBrowser("GZy6sIZ6wl9NJOKB-jnmVQ", (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
             + "keep any secret of yours\u2013closer than you keep it "
@@ -450,7 +533,7 @@
             + "ER7MWJZ1FBI_NKvn7Zb1Lw"
         ));
         // cek = "aY5_Ghmk9KxWPBLu_glx1w";
-        myPlaintext = await cryptoDecryptBrowser(
+        myPlaintext = await jweDecryptBrowser(
             "GZy6sIZ6wl9NJOKB-jnmVQ",
             myJwe
         );
@@ -465,14 +548,14 @@
         myKek = base64urlFromBuffer(globalThis.crypto.getRandomValues(
             new Uint8Array(32)
         ));
-        myJwe = await cryptoEncryptBrowser(myKek, (
+        myJwe = await jweEncryptBrowser(myKek, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
             + "keep any secret of yours\u2013closer than you keep it "
             + "yourself. But you cannot trust us to let you face trouble "
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
-        myPlaintext = await cryptoDecryptBrowser(myKek, myJwe);
+        myPlaintext = await jweDecryptBrowser(myKek, myJwe);
         assertEqual(myPlaintext, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
@@ -480,8 +563,8 @@
             + "yourself. But you cannot trust us to let you face trouble "
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
-        myJwe = await cryptoEncryptBrowser(myKek, "");
-        myPlaintext = await cryptoDecryptBrowser(myKek, myJwe);
+        myJwe = await jweEncryptBrowser(myKek, "");
+        myPlaintext = await jweDecryptBrowser(myKek, myJwe);
         assertEqual(myPlaintext, "");
     };
     await runMe();
@@ -518,13 +601,6 @@
         rr = Buffer.concat([
             Buffer.alloc(8), cek
         ]);
-        debugInline({
-            kek,
-            cek,
-            aa,
-            iv,
-            rr
-        });
         // 2) Calculate intermediate values.
         // For j = 0 to 5
         // For i = 1 to n
