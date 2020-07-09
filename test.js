@@ -285,6 +285,10 @@
         return buf;
     };
     jweDecryptBrowser = async function (kek, jwe) {
+    /*
+     * this function will A256KW+A256GCM-decrypt <jwe> with given <kek>
+     * to plaintext
+     */
         let cek;
         let ciphertext;
         let header;
@@ -325,6 +329,10 @@
         return new TextDecoder().decode(tmp);
     };
     jweEncryptBrowser = async function (kek, plaintext, header, cek, iv) {
+    /*
+     * this function will A256KW+A256GCM-encrypt <plaintext> with given <kek>
+     * to jwe
+     */
         let tmp;
         header = header || {
             "alg": "A256KW",
@@ -372,7 +380,7 @@
     };
     jweKeyWrapNode = function (kek, cek) {
     /*
-     * this function will a256kw-wrap <cek> with given <kek>
+     * this function will A256KW-wrap <cek> with given <kek>
      */
         let aa;
         let bb;
@@ -449,10 +457,11 @@
         rr[5] = aa[5];
         rr[6] = aa[6];
         rr[7] = aa[7];
+        return rr;
     };
     jweValidateHeader = function (header, kek, cek, cekPadding) {
     /*
-     * this function will validate <header>
+     * this function will validate jwe <header>
      */
         assertOrThrow((
             (header.alg === "A128KW" && header.enc === "A128GCM")
@@ -569,95 +578,18 @@
     };
     await runMe();
     runMe = async function () {
-        let aa;
-        let bb;
         let cek;
-        let ii;
-        let iv;
-        let jj;
         let kek;
-        let nn;
-        let rr;
-        let tt;
+        let tmp;
         if (isBrowser) {
             return;
         }
         cek = hexToBuffer("00112233445566778899AABBCCDDEEFF");
         kek = hexToBuffer("000102030405060708090A0B0C0D0E0F");
-        cek = Buffer.from(cek);
-        kek = Buffer.from(kek);
-        // https://tools.ietf.org/html/rfc3394#section-2.2.1
-        // 2.2.1 Key Wrap
-        // Inputs: Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
-        // Key, K (the KEK).
-        // Outputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}.
-        // 1) Initialize variables.
-        // Set A = IV, an initial value (see 2.2.3)
-        // For i = 1 to n
-        // R[i] = P[i]
-        nn = cek.byteLength >> 3;
-        aa = Buffer.alloc(16, 0xa6);
-        iv = Buffer.alloc(16);
-        rr = Buffer.concat([
-            Buffer.alloc(8), cek
-        ]);
-        // 2) Calculate intermediate values.
-        // For j = 0 to 5
-        // For i = 1 to n
-        // B = AES(K, A | R[i])
-        // A = MSB(64, B) ^ t where t = (n*j)+i
-        // R[i] = LSB(64, B)
-        jj = 0;
-        while (jj < 6) {
-            ii = 1;
-            while (ii <= nn) {
-                aa[8] = rr[8 * ii];
-                aa[9] = rr[8 * ii + 1];
-                aa[10] = rr[8 * ii + 2];
-                aa[11] = rr[8 * ii + 3];
-                aa[12] = rr[8 * ii + 4];
-                aa[13] = rr[8 * ii + 5];
-                aa[14] = rr[8 * ii + 6];
-                aa[15] = rr[8 * ii + 7];
-                bb = crypto.createCipheriv("aes-128-cbc", kek, iv);
-                bb.setAutoPadding(false);
-                aa.set(bb.update(aa));
-                bb = bb.final();
-                aa.set(bb, 8 - bb.byteLength);
-                rr[8 * ii + 0] = aa[8];
-                rr[8 * ii + 1] = aa[9];
-                rr[8 * ii + 2] = aa[10];
-                rr[8 * ii + 3] = aa[11];
-                rr[8 * ii + 4] = aa[12];
-                rr[8 * ii + 5] = aa[13];
-                rr[8 * ii + 6] = aa[14];
-                rr[8 * ii + 7] = aa[15];
-                tt = jj * nn + ii;
-                aa[4] ^= (tt >>> 24) & 0xff;
-                aa[5] ^= (tt >> 16) & 0xff;
-                aa[6] ^= (tt >> 8) & 0xff;
-                aa[7] ^= tt & 0xff;
-                ii += 1;
-            }
-            jj += 1;
-        }
-        // 3) Output the results.
-        // Set C[0] = A
-        // For i = 1 to n
-        // C[i] = R[i]
-        rr[0] = aa[0];
-        rr[1] = aa[1];
-        rr[2] = aa[2];
-        rr[3] = aa[3];
-        rr[4] = aa[4];
-        rr[5] = aa[5];
-        rr[6] = aa[6];
-        rr[7] = aa[7];
-        assertEqual(
-            hexFromBuffer(rr),
-            "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5"
-        );
-        debugInline(rr);
+        tmp = jweKeyWrapNode(kek, cek);
+        tmp = hexFromBuffer(tmp);
+        assertEqual(tmp, "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5");
+        console.log("wrapped-key - " + tmp);
         return;
     };
     await runMe();
