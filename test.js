@@ -214,7 +214,7 @@
      */
         let ii;
         let str;
-        // browser
+        // env - browser
         if (typeof globalThis.btoa === "function") {
             str = "";
             ii = 0;
@@ -223,7 +223,7 @@
                 ii += 1;
             }
             str = globalThis.btoa(str);
-        // node
+        // env - node
         } else {
             str = Buffer.from(buf).toString("base64");
         }
@@ -248,13 +248,13 @@
         ), "/").replace((
             /\=*?$/
         ), "");
-        // browser
+        // env - browser
         if (typeof globalThis.atob === "function") {
             return Uint8Array.from(globalThis.atob(str), function (chr) {
                 return chr.charCodeAt(0);
             });
         }
-        // node
+        // env - node
         return Buffer.from(str, "base64");
     };
     hexFromBuffer = function (buf) {
@@ -310,6 +310,7 @@
         jweValidateHeader(JSON.parse(new TextDecoder().decode(
             base64urlToBuffer(header)
         )), kek, cek, 8);
+        // env - browser
         return crypto.subtle.importKey("raw", kek, "AES-KW", false, [
             "unwrapKey"
         ]).then(function (data) {
