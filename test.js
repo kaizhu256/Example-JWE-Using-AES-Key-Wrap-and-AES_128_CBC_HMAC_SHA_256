@@ -178,7 +178,7 @@
     let hexToBuffer;
     let isBrowser;
     let jweDecryptBrowser;
-    let jweEncryptBrowser;
+    let jweEncrypt;
     let jweKeyUnwrapNode;
     let jweKeyWrapNode;
     let jweValidateHeader;
@@ -329,7 +329,7 @@
         }, cek, ciphertext));
         return new TextDecoder().decode(tmp);
     };
-    jweEncryptBrowser = async function (kek, plaintext, header, cek, iv) {
+    jweEncrypt = function (kek, plaintext, header, cek, iv) {
     /*
      * this function will A256KW+A256GCM-encrypt <plaintext> with given <kek>
      * to jwe
@@ -372,47 +372,51 @@
             ciphertext = Buffer.concat(ciphertext);
             cek = jweKeyWrapNode(kek, cek);
             tag = cipher.getAuthTag();
-            return new Promise(function (resolve) {
-                setTimeout(function () {
-                    resolve(
-                        header
-                        + "." + base64urlFromBuffer(cek)
-                        + "." + iv
-                        + "." + base64urlFromBuffer(ciphertext)
-                        + "." + base64urlFromBuffer(tag)
-                    );
-                });
+            return Promise.resolve().then(function () {
+                return (
+                    header
+                    + "." + base64urlFromBuffer(cek)
+                    + "." + iv
+                    + "." + base64urlFromBuffer(ciphertext)
+                    + "." + base64urlFromBuffer(tag)
+                );
             });
         }
         // env - browser
         iv = iv || base64urlFromBuffer(
             crypto.getRandomValues(new Uint8Array(12))
         );
-        cek = await crypto.subtle.importKey("raw", cek, {
+        return crypto.subtle.importKey("raw", cek, {
             name: "AES-GCM"
         }, true, [
             "encrypt"
-        ]);
-        ciphertext = new Uint8Array(await crypto.subtle.encrypt({
-            additionalData: new TextEncoder().encode(header),
-            iv: base64urlToBuffer(iv),
-            name: "AES-GCM"
-        }, cek, new TextEncoder().encode(plaintext)));
-        tag = ciphertext.subarray(-16);
-        ciphertext = ciphertext.subarray(0, -16);
-        kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
-            "wrapKey"
-        ]);
-        cek = new Uint8Array(
-            await crypto.subtle.wrapKey("raw", cek, kek, "AES-KW")
-        );
-        return (
-            header
-            + "." + base64urlFromBuffer(cek)
-            + "." + iv
-            + "." + base64urlFromBuffer(ciphertext)
-            + "." + base64urlFromBuffer(tag)
-        );
+        ]).then(function (data) {
+            cek = data;
+            return crypto.subtle.encrypt({
+                additionalData: new TextEncoder().encode(header),
+                iv: base64urlToBuffer(iv),
+                name: "AES-GCM"
+            }, cek, new TextEncoder().encode(plaintext));
+        }).then(function (data) {
+            ciphertext = new Uint8Array(data);
+            tag = ciphertext.subarray(-16);
+            ciphertext = ciphertext.subarray(0, -16);
+            return crypto.subtle.importKey("raw", kek, "AES-KW", false, [
+                "wrapKey"
+            ]);
+        }).then(function (data) {
+            kek = data;
+            return crypto.subtle.wrapKey("raw", cek, kek, "AES-KW");
+        }).then(function (data) {
+            cek = new Uint8Array(data);
+            return (
+                header
+                + "." + base64urlFromBuffer(cek)
+                + "." + iv
+                + "." + base64urlFromBuffer(ciphertext)
+                + "." + base64urlFromBuffer(tag)
+            );
+        });
     };
     jweKeyUnwrapNode = function (kek, cek) {
     /*
@@ -488,6 +492,14 @@
         // 3) Output results.
         // For i = 1 to n
         // P[i] = R[i]
+        assertOrThrow(aa[0] === 0xa6, "key-unwrap failed");
+        assertOrThrow(aa[1] === 0xa6, "key-unwrap failed");
+        assertOrThrow(aa[2] === 0xa6, "key-unwrap failed");
+        assertOrThrow(aa[3] === 0xa6, "key-unwrap failed");
+        assertOrThrow(aa[4] === 0xa6, "key-unwrap failed");
+        assertOrThrow(aa[5] === 0xa6, "key-unwrap failed");
+        assertOrThrow(aa[6] === 0xa6, "key-unwrap failed");
+        assertOrThrow(aa[7] === 0xa6, "key-unwrap failed");
         return rr;
     };
     jweKeyWrapNode = function (kek, cek) {
@@ -624,7 +636,7 @@
         let myJwe;
         let myKek;
         let myPlaintext;
-        myJwe = await jweEncryptBrowser("GZy6sIZ6wl9NJOKB-jnmVQ", (
+        myJwe = await jweEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
             + "keep any secret of yours\u2013closer than you keep it "
@@ -675,7 +687,7 @@
         myKek = base64urlFromBuffer(crypto.getRandomValues(
             new Uint8Array(32)
         ));
-        myJwe = await jweEncryptBrowser(myKek, (
+        myJwe = await jweEncrypt(myKek, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
             + "keep any secret of yours\u2013closer than you keep it "
@@ -690,7 +702,7 @@
             + "yourself. But you cannot trust us to let you face trouble "
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
-        myJwe = await jweEncryptBrowser(myKek, "");
+        myJwe = await jweEncrypt(myKek, "");
         myPlaintext = await jweDecryptBrowser(myKek, myJwe);
         assertEqual(myPlaintext, "");
     };
@@ -757,7 +769,7 @@
         let myJwe;
         let myKek;
         let myPlaintext;
-        myJwe = await jweEncryptBrowser("GZy6sIZ6wl9NJOKB-jnmVQ", (
+        myJwe = await jweEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
             + "keep any secret of yours\u2013closer than you keep it "
@@ -808,7 +820,7 @@
         //!! myKek = base64urlFromBuffer(crypto.getRandomValues(
             //!! new Uint8Array(32)
         //!! ));
-        //!! myJwe = await jweEncryptBrowser(myKek, (
+        //!! myJwe = await jweEncrypt(myKek, (
             //!! "You can trust us to stick with you through thick and "
             //!! + "thin\u2013to the bitter end. And you can trust us to "
             //!! + "keep any secret of yours\u2013closer than you keep it "
@@ -823,7 +835,7 @@
             //!! + "yourself. But you cannot trust us to let you face trouble "
             //!! + "alone, and go off without a word. We are your friends, Frodo."
         //!! ));
-        //!! myJwe = await jweEncryptBrowser(myKek, "");
+        //!! myJwe = await jweEncrypt(myKek, "");
         //!! myPlaintext = await jweDecryptNode(myKek, myJwe);
         //!! assertEqual(myPlaintext, "");
     };
