@@ -590,15 +590,42 @@
         if (isBrowser) {
             return;
         }
+        // 4.1 Wrap 128 bits of Key Data with a 128-bit KEK
         cek = hexToBuffer("00112233445566778899AABBCCDDEEFF");
         kek = hexToBuffer("000102030405060708090A0B0C0D0E0F");
         tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
         assertEqual(tmp, "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5");
         console.log("wrapped-key - " + tmp);
+        // 4.2 Wrap 128 bits of Key Data with a 192-bit KEK
         cek = hexToBuffer("00112233445566778899aabbccddeeff");
         kek = hexToBuffer("000102030405060708090a0b0c0d0e0f1011121314151617");
         tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
         assertEqual(tmp, "96778b25ae6ca435f92b5b97c050aed2468ab8a17ad84e5d");
+        // 4.3 Wrap 128 bits of Key Data with a 256-bit KEK
+        cek = hexToBuffer("00112233445566778899aabbccddeeff");
+        kek = hexToBuffer(
+            "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        );
+        tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
+        assertEqual(tmp, "64e8c3f9ce0f5ba263e9777905818a2a93c8191e7d6e8ae7");
+        // 4.4 Wrap 192 bits of Key Data with a 192-bit KEK
+        cek = hexToBuffer("00112233445566778899aabbccddeeff0001020304050607");
+        kek = hexToBuffer("000102030405060708090a0b0c0d0e0f1011121314151617");
+        tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
+        assertEqual(tmp, (
+            "031d33264e15d33268f24ec260743edce1c6c7ddee725a936ba814915c6762d2"
+        ));
+        // 4.5 Wrap 192 bits of Key Data with a 256-bit KEK
+        cek = hexToBuffer(
+            "00112233445566778899aabbccddeeff0001020304050607"
+        );
+        kek = hexToBuffer(
+            "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        );
+        tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
+        assertEqual(tmp, (
+            "a8f9bc1612c68b3ff6e6f4fbe30e71e4769c8b80a32cb8958cd5d17d6b254da1"
+        ));
         return;
     };
     await runMe();
