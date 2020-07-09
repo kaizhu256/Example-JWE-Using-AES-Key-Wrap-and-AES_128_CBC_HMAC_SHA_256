@@ -532,17 +532,9 @@
         // A = MSB(64, B) ^ t where t = (n*j)+i
         // R[i] = LSB(64, B)
         jj = 0;
-        while (jj < 6 * nn) {
+        while (jj < 6) {
             ii = 1;
             while (ii <= nn) {
-                aa[8] = 0;
-                aa[9] = 0;
-                aa[10] = 0;
-                aa[11] = 0;
-                aa[12] = 0;
-                aa[13] = 0;
-                aa[14] = 0;
-                aa[15] = 0;
                 rr.copy(aa, 8, ii * 8, ii * 8 + 8);
                 bb = crypto.createCipheriv("aes-128-cbc", kek, iv);
                 bb.setAutoPadding(false);
@@ -550,7 +542,7 @@
                 bb = bb.final();
                 bb.copy(aa, 8 - bb.byteLength);
                 aa.copy(rr, ii * 8, 8, 16);
-                tt = jj + ii;
+                tt = jj * nn + ii;
                 aa[4] ^= (tt >>> 24) & 0xff;
                 aa[5] ^= (tt >> 16) & 0xff;
                 aa[6] ^= (tt >> 8) & 0xff;
@@ -559,7 +551,7 @@
                 //!! debugInline(rr, "aes");
                 ii += 1;
             }
-            jj += nn;
+            jj += 1;
         }
         // 3) Output the results.
         // Set C[0] = A
