@@ -535,20 +535,32 @@
         while (jj < 6) {
             ii = 1;
             while (ii <= nn) {
-                rr.copy(aa, 8, ii * 8, ii * 8 + 8);
+                aa[8] = rr[8 * ii];
+                aa[9] = rr[8 * ii + 1];
+                aa[10] = rr[8 * ii + 2];
+                aa[11] = rr[8 * ii + 3];
+                aa[12] = rr[8 * ii + 4];
+                aa[13] = rr[8 * ii + 5];
+                aa[14] = rr[8 * ii + 6];
+                aa[15] = rr[8 * ii + 7];
                 bb = crypto.createCipheriv("aes-128-cbc", kek, iv);
                 bb.setAutoPadding(false);
-                bb.update(aa).copy(aa);
+                aa.set(bb.update(aa));
                 bb = bb.final();
-                bb.copy(aa, 8 - bb.byteLength);
-                aa.copy(rr, ii * 8, 8, 16);
+                aa.set(bb, 8 - bb.byteLength);
+                rr[8 * ii + 0] = aa[8];
+                rr[8 * ii + 1] = aa[9];
+                rr[8 * ii + 2] = aa[10];
+                rr[8 * ii + 3] = aa[11];
+                rr[8 * ii + 4] = aa[12];
+                rr[8 * ii + 5] = aa[13];
+                rr[8 * ii + 6] = aa[14];
+                rr[8 * ii + 7] = aa[15];
                 tt = jj * nn + ii;
                 aa[4] ^= (tt >>> 24) & 0xff;
                 aa[5] ^= (tt >> 16) & 0xff;
                 aa[6] ^= (tt >> 8) & 0xff;
                 aa[7] ^= tt & 0xff;
-                //!! debugInline(aa, "aes");
-                //!! debugInline(rr, "aes");
                 ii += 1;
             }
             jj += 1;
@@ -557,15 +569,18 @@
         // Set C[0] = A
         // For i = 1 to n
         // C[i] = R[i]
-        aa.copy(rr);
-        try {
-            assertEqual(
-                hexFromBuffer(rr),
-                "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5"
-            );
-        } catch (errCaught) {
-            console.error(errCaught);
-        }
+        rr[0] = aa[0];
+        rr[1] = aa[1];
+        rr[2] = aa[2];
+        rr[3] = aa[3];
+        rr[4] = aa[4];
+        rr[5] = aa[5];
+        rr[6] = aa[6];
+        rr[7] = aa[7];
+        assertEqual(
+            hexFromBuffer(rr),
+            "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5"
+        );
         debugInline(rr);
         return;
     };
