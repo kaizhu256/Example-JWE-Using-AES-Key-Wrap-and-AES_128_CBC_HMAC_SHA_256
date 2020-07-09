@@ -472,9 +472,7 @@
             + "yourself. But you cannot trust us to let you face trouble "
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
-        console.log("encrypted jwe - " + myJwe);
         myPlaintext = await cryptoDecryptBrowser(myKek, myJwe);
-        console.log("decrypted jwe - " + myPlaintext);
         assertEqual(myPlaintext, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
@@ -483,9 +481,8 @@
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
         myJwe = await cryptoEncryptBrowser(myKek, "");
-        console.log("encrypted jwe - " + myJwe);
         myPlaintext = await cryptoDecryptBrowser(myKek, myJwe);
-        console.log("decrypted jwe - " + myPlaintext);
+        assertEqual(myPlaintext, "");
     };
     await runMe();
 
