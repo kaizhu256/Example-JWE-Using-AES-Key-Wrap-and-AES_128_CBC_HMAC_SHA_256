@@ -285,7 +285,7 @@
         }
         return buf;
     };
-    jweDecrypt = async function (kek, jwe) {
+    jweDecrypt = function (kek, jwe) {
     /*
      * this function will A256KW+A256GCM-decrypt <jwe> with given <kek>
      * to plaintext
@@ -310,24 +310,29 @@
         jweValidateHeader(JSON.parse(new TextDecoder().decode(
             base64urlToBuffer(header)
         )), kek, cek, 8);
-        kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
+        return crypto.subtle.importKey("raw", kek, "AES-KW", false, [
             "unwrapKey"
-        ]);
-        cek = await crypto.subtle.unwrapKey("raw", cek, kek, {
-            name: "AES-KW"
-        }, "AES-GCM", false, [
-            "decrypt"
-        ]);
-        tmp = base64urlToBuffer(ciphertext);
-        ciphertext = new Uint8Array(tmp.length + 16);
-        ciphertext.set(tmp);
-        ciphertext.set(base64urlToBuffer(tag), tmp.length);
-        tmp = new Uint8Array(await crypto.subtle.decrypt({
-            additionalData: new TextEncoder().encode(header),
-            iv: base64urlToBuffer(iv),
-            name: "AES-GCM"
-        }, cek, ciphertext));
-        return new TextDecoder().decode(tmp);
+        ]).then(function (data) {
+            kek = data;
+            return crypto.subtle.unwrapKey("raw", cek, kek, {
+                name: "AES-KW"
+            }, "AES-GCM", false, [
+                "decrypt"
+            ]);
+        }).then(function (data) {
+            cek = data;
+            tmp = base64urlToBuffer(ciphertext);
+            ciphertext = new Uint8Array(tmp.length + 16);
+            ciphertext.set(tmp);
+            ciphertext.set(base64urlToBuffer(tag), tmp.length);
+            return crypto.subtle.decrypt({
+                additionalData: new TextEncoder().encode(header),
+                iv: base64urlToBuffer(iv),
+                name: "AES-GCM"
+            }, cek, ciphertext);
+        }).then(function (data) {
+            return new TextDecoder().decode(data);
+        });
     };
     jweEncrypt = function (kek, plaintext, header, cek, iv) {
     /*
