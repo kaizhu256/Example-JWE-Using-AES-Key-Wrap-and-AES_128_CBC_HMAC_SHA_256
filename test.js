@@ -313,13 +313,13 @@
             base64urlToBuffer(header)
         )), kek, cek, 8);
         header = new TextEncoder().encode(header);
+        tmp = base64urlToBuffer(ciphertext);
+        ciphertext = new Uint8Array(tmp.length + 16);
+        ciphertext.set(tmp);
+        ciphertext.set(base64urlToBuffer(tag), tmp.length);
         // env - node
         if (!isBrowser) {
             cek = jweKeyUnwrapNode(kek, cek);
-            tmp = base64urlToBuffer(ciphertext);
-            ciphertext = new Uint8Array(tmp.length + 16);
-            ciphertext.set(tmp);
-            ciphertext.set(tag, tmp.length);
             debugInline(cek.length, cek);
             cipher = crypto.createDecipheriv((
                 cek.byteLength === 16
@@ -351,10 +351,6 @@
             ]);
         }).then(function (data) {
             cek = data;
-            tmp = base64urlToBuffer(ciphertext);
-            ciphertext = new Uint8Array(tmp.length + 16);
-            ciphertext.set(tmp);
-            ciphertext.set(base64urlToBuffer(tag), tmp.length);
             return crypto.subtle.decrypt({
                 additionalData: header,
                 iv: base64urlToBuffer(iv),
