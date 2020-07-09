@@ -167,7 +167,7 @@
 
 
 // run shared js-env code - function
-(async function (local) {
+(async function () {
     "use strict";
     let assertEqual;
     let assertOrThrow;
@@ -485,263 +485,97 @@
         assertEqual(myPlaintext, "");
     };
     await runMe();
-
-
-    cryptoKeyWrapNode = function (KK, RR, mode) {
-    /*
-     * this function will wrap/uwrap <KK> with given <RR>
-     * https://tools.ietf.org/html/rfc7516#appendix-A.3.3
-        2.2.1 Key Wrap
-        https://tools.ietf.org/html/rfc3394#section-2.2.1
-            Inputs: Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
-                Key, K (the KEK).
-            Outputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}.
-            1) Initialize variables.
-                Set A = IV, an initial value (see 2.2.3)
-                For i = 1 to n
-                    R[i] = P[i]
-            2) Calculate intermediate values.
-                For j = 0 to 5
-                    For i = 1 to n
-                        B = AES(K, A | R[i])
-                        A = MSB(64, B) ^ t where t = (n*j)+i
-                        R[i] = LSB(64, B)
-            3) Output the results.
-                Set C[0] = A
-                For i = 1 to n
-                    C[i] = R[i]
-        2.2.2 Key Unwrap
-        https://tools.ietf.org/html/rfc3394#section-2.2.2
-            Inputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}, and
-                Key, K (the KEK).
-            Outputs: Plaintext, n 64-bit values {P0, P1, K, Pn}.
-            1) Initialize variables.
-                Set A = C[0]
-                For i = 1 to n
-                    R[i] = C[i]
-            2) Compute intermediate values.
-                For j = 5 to 0
-                    For i = n to 1
-                        B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
-                        A = MSB(64, B)
-                        R[i] = LSB(64, B)
-            3) Output results.
-                For i = 1 to n
-                    P[i] = R[i]
-     */
-        let AA;
-        let BB;
-        let cipher;
+    runMe = async function () {
+        let aa;
+        let bb;
+        let cek;
         let ii;
         let iv;
         let jj;
-        let loop;
-        let nn;
-        let tt;
-        // init var
-        AA = new Uint8Array(32);
-        ii = 0;
-        iv = new Uint8Array(16);
-        nn = 4;
-        cipher = (
-            mode === "unwrap"
-            ? crypto.createDecipheriv
-            : crypto.createCipheriv
-        );
-        // init loop
-        loop = function () {
-            // AA xor tt
-            if (mode === "unwrap") {
-                tt = nn * jj + ii;
-                AA[4] ^= ((tt >>> 24) & 0xff);
-                AA[5] ^= ((tt >> 16) & 0xff);
-                AA[6] ^= ((tt >> 8) & 0xff);
-                AA[7] ^= (tt & 0xff);
-            }
-            // init RR
-            AA[8] = RR[8 * ii];
-            AA[9] = RR[8 * ii + 1];
-            AA[10] = RR[8 * ii + 2];
-            AA[11] = RR[8 * ii + 3];
-            AA[12] = RR[8 * ii + 4];
-            AA[13] = RR[8 * ii + 5];
-            AA[14] = RR[8 * ii + 6];
-            AA[15] = RR[8 * ii + 7];
-            // encrypt / decrypt RR
-            BB = cipher("aes-128-cbc", KK, iv);
-            BB.setAutoPadding(false);
-            BB = Buffer.concat([
-                BB.update(AA), BB.final()
-            ]);
-            // update RR
-            AA[0] = BB[0];
-            AA[1] = BB[1];
-            AA[2] = BB[2];
-            AA[3] = BB[3];
-            AA[4] = BB[4];
-            AA[5] = BB[5];
-            AA[6] = BB[6];
-            AA[7] = BB[7];
-            RR[8 * ii + 0] = BB[8];
-            RR[8 * ii + 1] = BB[9];
-            RR[8 * ii + 2] = BB[10];
-            RR[8 * ii + 3] = BB[11];
-            RR[8 * ii + 4] = BB[12];
-            RR[8 * ii + 5] = BB[13];
-            RR[8 * ii + 6] = BB[14];
-            RR[8 * ii + 7] = BB[15];
-            // AA xor tt
-            if (mode !== "unwrap") {
-                tt = nn * jj + ii;
-                AA[4] ^= ((tt >>> 24) & 0xff);
-                AA[5] ^= ((tt >> 16) & 0xff);
-                AA[6] ^= ((tt >> 8) & 0xff);
-                AA[7] ^= (tt & 0xff);
-            }
-        };
-        if (mode === "unwrap") {
-            AA[0] = RR[0];
-            AA[1] = RR[1];
-            AA[2] = RR[2];
-            AA[3] = RR[3];
-            AA[4] = RR[4];
-            AA[5] = RR[5];
-            AA[6] = RR[6];
-            AA[7] = RR[7];
-            jj = 5;
-            while (0 <= jj) {
-                ii = nn;
-                while (1 <= ii) {
-                    loop();
-                    ii -= 1;
-                }
-                jj -= 1;
-            }
-            return RR.slice(8);
-        }
-        BB = RR;
-        RR = new Uint8Array(BB.length + 8);
-        ii = 0;
-        while (ii < BB.length) {
-            RR[ii + 8] = BB[ii];
-            ii += 1;
-        }
-        AA[0] = 0xa6;
-        AA[1] = 0xa6;
-        AA[2] = 0xa6;
-        AA[3] = 0xa6;
-        AA[4] = 0xa6;
-        AA[5] = 0xa6;
-        AA[6] = 0xa6;
-        AA[7] = 0xa6;
-        jj = 0;
-        while (jj <= 5) {
-            ii = 1;
-            while (ii <= nn) {
-                loop();
-                ii += 1;
-            }
-            jj += 1;
-        }
-        RR[0] = AA[0];
-        RR[1] = AA[1];
-        RR[2] = AA[2];
-        RR[3] = AA[3];
-        RR[4] = AA[4];
-        RR[5] = AA[5];
-        RR[6] = AA[6];
-        RR[7] = AA[7];
-        return RR;
-    };
-
-
-    runMe = async function () {
-        //!! let aa;
-        //!! let bb;
-        let cek;
-        //!! let cipher;
-        //!! let ii;
-        //!! let jj;
         let kek;
-        //!! let kk;
-        //!! let nn;
-        //!! let pp;
-        //!! let rr;
-        let tmp;
+        let nn;
+        let rr;
+        let tt;
         if (isBrowser) {
             return;
         }
-        kek = base64urlToBuffer("GZy6sIZ6wl9NJOKB-jnmVQ");
-        cek = base64urlToBuffer("aY5_Ghmk9KxWPBLu_glx1w");
-        //!! cek = base64urlToBuffer("CBI6oDw8MydIx1IBntf_lQcw2MmJKIQx");
-        //!! cipher = require("crypto").createDecipheriv;
-        debugInline(kek);
-        debugInline(cek);
-        //!! //!! cek = base64urlFromBuffer(
-            //!! //!! cryptoKeyWrapNode(kek, cek, "unwrap")
-        //!! //!! );
-        //!! debugInline(cek);
-        tmp = cryptoKeyWrapNode(kek, cek);
-        //!! debugInline(tmp);
-        //!! debugInline(
-            //!! base64urlFromBuffer(Buffer.from(tmp))
-        //!! );
-/*
- * https://tools.ietf.org/html/rfc7516#appendix-A.3.3
-    2.2.2 Key Unwrap
-    https://tools.ietf.org/html/rfc3394#section-2.2.2
-        Inputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}, and
-            Key, K (the KEK).
-        Outputs: Plaintext, n 64-bit values {P0, P1, K, Pn}.
-        1) Initialize variables.
-            Set A = C[0]
-            For i = 1 to n
-                R[i] = C[i]
-        2) Compute intermediate values.
-            For j = 5 to 0
-                For i = n to 1
-                    B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
-                    A = MSB(64, B)
-                    R[i] = LSB(64, B)
-        3) Output results.
-            For i = 1 to n
-                P[i] = R[i]
- */
-        //!! // 1) Initialize variables.
-        //!! nn = 2;
-        //!! rr = Buffer.alloc(nn * 64);
-        //!! // Set A = C[0]
-        //!! aa = cek.slice(8);
-        //!! // For i = 1 to n
-        //!! // R[i] = C[i]
-        //!! ii = 1;
-        //!! while (ii <= nn) {
-            //!! kk = 0;
-            //!! while (kk < 8) {
-                //!! rr[ii * 8 + kk] = cek[ii * 8 + kk];
-                //!! kk += 1;
-            //!! }
-            //!! ii += 1;
-        //!! }
-        //!! // 2) Compute intermediate values.
-        //!! // For j = 5 to 0
-        //!! jj = 5;
-        //!! while (0 <= jj) {
-            //!! // For i = n to 1
-            //!! ii = nn;
-            //!! while (1 <= ii) {
-                //!! // B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
-                //!! bb = crypto("aes-128-cbc", kek, "");
-                //!! bb.setAutoPadding(false);
-                //!! // A = MSB(64, B)
-                //!! // R[i] = LSB(64, B)
-                //!! ii -= 1;
-            //!! }
-            //!! jj -= 1;
-        //!! }
-    //!! // 3) Output results.
-    //!! // For i = 1 to n
-    //!! // P[i] = R[i]
+        cek = hexToBuffer("00112233445566778899AABBCCDDEEFF");
+        kek = hexToBuffer("000102030405060708090A0B0C0D0E0F");
+        cek = Buffer.from(cek);
+        kek = Buffer.from(kek);
+        // https://tools.ietf.org/html/rfc3394#section-2.2.1
+        // 2.2.1 Key Wrap
+        // Inputs: Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
+        // Key, K (the KEK).
+        // Outputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}.
+        // 1) Initialize variables.
+        // Set A = IV, an initial value (see 2.2.3)
+        // For i = 1 to n
+        // R[i] = P[i]
+        nn = cek.byteLength >> 3;
+        aa = Buffer.alloc(16, 0xa6);
+        iv = Buffer.alloc(16);
+        rr = Buffer.concat([
+            Buffer.alloc(8), cek
+        ]);
+        debugInline({
+            kek,
+            cek,
+            aa,
+            iv,
+            rr
+        });
+        // 2) Calculate intermediate values.
+        // For j = 0 to 5
+        // For i = 1 to n
+        // B = AES(K, A | R[i])
+        // A = MSB(64, B) ^ t where t = (n*j)+i
+        // R[i] = LSB(64, B)
+        jj = 0;
+        while (jj < 6 * nn) {
+            ii = 1;
+            while (ii <= nn) {
+                aa[8] = 0;
+                aa[9] = 0;
+                aa[10] = 0;
+                aa[11] = 0;
+                aa[12] = 0;
+                aa[13] = 0;
+                aa[14] = 0;
+                aa[15] = 0;
+                rr.copy(aa, 8, ii * 8, ii * 8 + 8);
+                bb = crypto.createCipheriv("aes-128-cbc", kek, iv);
+                bb.setAutoPadding(false);
+                bb.update(aa).copy(aa);
+                bb = bb.final();
+                bb.copy(aa, 8 - bb.byteLength);
+                aa.copy(rr, ii * 8, 8, 16);
+                tt = jj + ii;
+                aa[4] ^= (tt >>> 24) & 0xff;
+                aa[5] ^= (tt >> 16) & 0xff;
+                aa[6] ^= (tt >> 8) & 0xff;
+                aa[7] ^= tt & 0xff;
+                //!! debugInline(aa, "aes");
+                //!! debugInline(rr, "aes");
+                ii += 1;
+            }
+            jj += nn;
+        }
+        // 3) Output the results.
+        // Set C[0] = A
+        // For i = 1 to n
+        // C[i] = R[i]
+        aa.copy(rr);
+        try {
+            assertEqual(
+                hexFromBuffer(rr),
+                "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5"
+            );
+        } catch (errCaught) {
+            console.error(errCaught);
+        }
+        debugInline(rr);
+        return;
     };
     await runMe();
-}(globalThis.globalLocal));
+}());
