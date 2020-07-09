@@ -179,6 +179,7 @@
     let isBrowser;
     let jweDecryptBrowser;
     let jweEncryptBrowser;
+    let jweKeyUnwrapNode;
     let jweKeyWrapNode;
     let jweValidateHeader;
     let runMe;
@@ -378,9 +379,10 @@
             + "." + base64urlFromBuffer(tmp.subarray(-16))
         );
     };
-    jweKeyWrapNode = function (kek, cek) {
+    jweKeyUnwrapNode = function (kek, cek) {
     /*
      * this function will A256KW-wrap <cek> with given <kek>
+     * https://tools.ietf.org/html/rfc3394#section-2.2.1
      */
         let aa;
         let bb;
@@ -390,7 +392,93 @@
         let nn;
         let rr;
         let tt;
-        // https://tools.ietf.org/html/rfc3394#section-2.2.1
+        // 2.2.1 Key Wrap
+        // Inputs: Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
+        // Key, K (the KEK).
+        // Outputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}.
+        // 1) Initialize variables.
+        // Set A = IV, an initial value (see 2.2.3)
+        // For i = 1 to n
+        // R[i] = P[i]
+        nn = cek.byteLength >> 3;
+        aa = Buffer.alloc(16, 0xa6);
+        iv = Buffer.alloc(16);
+        rr = Buffer.concat([
+            Buffer.alloc(8), cek
+        ]);
+        // 2) Calculate intermediate values.
+        // For j = 0 to 5
+        // For i = 1 to n
+        // B = AES(K, A | R[i])
+        // A = MSB(64, B) ^ t where t = (n*j)+i
+        // R[i] = LSB(64, B)
+        jj = 0;
+        while (jj < 6) {
+            ii = 1;
+            while (ii <= nn) {
+                aa[8] = rr[8 * ii];
+                aa[9] = rr[8 * ii + 1];
+                aa[10] = rr[8 * ii + 2];
+                aa[11] = rr[8 * ii + 3];
+                aa[12] = rr[8 * ii + 4];
+                aa[13] = rr[8 * ii + 5];
+                aa[14] = rr[8 * ii + 6];
+                aa[15] = rr[8 * ii + 7];
+                bb = crypto.createCipheriv((
+                    kek.byteLength === 16
+                    ? "aes-128-cbc"
+                    : kek.byteLength === 24
+                    ? "aes-192-cbc"
+                    : "aes-256-cbc"
+                ), kek, iv);
+                bb.setAutoPadding(false);
+                aa.set(bb.update(aa));
+                bb = bb.final();
+                aa.set(bb, 8 - bb.byteLength);
+                rr[8 * ii + 0] = aa[8];
+                rr[8 * ii + 1] = aa[9];
+                rr[8 * ii + 2] = aa[10];
+                rr[8 * ii + 3] = aa[11];
+                rr[8 * ii + 4] = aa[12];
+                rr[8 * ii + 5] = aa[13];
+                rr[8 * ii + 6] = aa[14];
+                rr[8 * ii + 7] = aa[15];
+                tt = jj * nn + ii;
+                aa[4] ^= (tt >>> 24) & 0xff;
+                aa[5] ^= (tt >> 16) & 0xff;
+                aa[6] ^= (tt >> 8) & 0xff;
+                aa[7] ^= tt & 0xff;
+                ii += 1;
+            }
+            jj += 1;
+        }
+        // 3) Output the results.
+        // Set C[0] = A
+        // For i = 1 to n
+        // C[i] = R[i]
+        rr[0] = aa[0];
+        rr[1] = aa[1];
+        rr[2] = aa[2];
+        rr[3] = aa[3];
+        rr[4] = aa[4];
+        rr[5] = aa[5];
+        rr[6] = aa[6];
+        rr[7] = aa[7];
+        return rr;
+    };
+    jweKeyWrapNode = function (kek, cek) {
+    /*
+     * this function will A256KW-wrap <cek> with given <kek>
+     * https://tools.ietf.org/html/rfc3394#section-2.2.1
+     */
+        let aa;
+        let bb;
+        let ii;
+        let iv;
+        let jj;
+        let nn;
+        let rr;
+        let tt;
         // 2.2.1 Key Wrap
         // Inputs: Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
         // Key, K (the KEK).
@@ -617,14 +705,15 @@
         ));
         // 4.5 Wrap 192 bits of Key Data with a 256-bit KEK
         cek = hexToBuffer(
-            "00112233445566778899aabbccddeeff0001020304050607"
+            "00112233445566778899aabbccddeeff000102030405060708090a0b0c0d0e0f"
         );
         kek = hexToBuffer(
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
         );
         tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
         assertEqual(tmp, (
-            "a8f9bc1612c68b3ff6e6f4fbe30e71e4769c8b80a32cb8958cd5d17d6b254da1"
+            "28c9f404c4b810f4cbccb35cfb87f8263f5786e2d80ed326"
+            + "cbc7f0e71a99f43bfb988b9b7a02dd21"
         ));
         return;
     };
