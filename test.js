@@ -177,7 +177,7 @@
     let hexFromBuffer;
     let hexToBuffer;
     let isBrowser;
-    let jweDecryptBrowser;
+    let jweDecrypt;
     let jweEncrypt;
     let jweKeyUnwrapNode;
     let jweKeyWrapNode;
@@ -285,7 +285,7 @@
         }
         return buf;
     };
-    jweDecryptBrowser = async function (kek, jwe) {
+    jweDecrypt = async function (kek, jwe) {
     /*
      * this function will A256KW+A256GCM-decrypt <jwe> with given <kek>
      * to plaintext
@@ -672,7 +672,7 @@
             + "ER7MWJZ1FBI_NKvn7Zb1Lw"
         ));
         // cek = "aY5_Ghmk9KxWPBLu_glx1w";
-        myPlaintext = await jweDecryptBrowser(
+        myPlaintext = await jweDecrypt(
             "GZy6sIZ6wl9NJOKB-jnmVQ",
             myJwe
         );
@@ -694,7 +694,7 @@
             + "yourself. But you cannot trust us to let you face trouble "
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
-        myPlaintext = await jweDecryptBrowser(myKek, myJwe);
+        myPlaintext = await jweDecrypt(myKek, myJwe);
         assertEqual(myPlaintext, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
@@ -703,7 +703,7 @@
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
         myJwe = await jweEncrypt(myKek, "");
-        myPlaintext = await jweDecryptBrowser(myKek, myJwe);
+        myPlaintext = await jweDecrypt(myKek, myJwe);
         assertEqual(myPlaintext, "");
     };
     await runMe();
