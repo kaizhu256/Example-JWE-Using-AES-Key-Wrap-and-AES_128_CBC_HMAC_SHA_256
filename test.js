@@ -177,12 +177,14 @@
     let cryptoEncryptBrowser;
     let cryptoKeyWrapNode;
     let cryptoValidateHeader;
+    let hexFromBuffer;
+    let hexToBuffer;
     let runMe;
     assertJsonEqual = local.assertJsonEqual;
     assertOrThrow = local.assertOrThrow;
     base64urlFromBuffer = function (buf) {
     /*
-     * this function will base64url encode <buf> to str
+     * this function will base64url-encode <buf> to str
      */
         let ii;
         let str;
@@ -199,6 +201,7 @@
         } else {
             str = Buffer.from(buf).toString("base64");
         }
+        // convert base64 to base64url
         return str.replace((
             /\+/g
         ), "-").replace((
@@ -209,8 +212,9 @@
     };
     base64urlToBuffer = function (str) {
     /*
-     * this function will base64url decode <str> to buf
+     * this function will base64url-decode <str> to buf
      */
+        // convert base64url to base64
         str = str.replace((
             /-/g
         ), "+").replace((
@@ -226,6 +230,34 @@
         }
         // node
         return Buffer.from(str, "base64");
+    };
+    hexFromBuffer = function (buf) {
+    /*
+     * this function will hex-encode <buf> to str
+     */
+        let ii;
+        let str;
+        str = "";
+        ii = 0;
+        while (ii < buf.byteLength) {
+            str += buf[ii].toString(16);
+            ii += 1;
+        }
+        return str;
+    };
+    hexToBuffer = function (str) {
+    /*
+     * this function will hex-decode <str> to buf
+     */
+        let buf;
+        let ii;
+        buf = new Uint8Array(str.length >> 1);
+        ii = 0;
+        while (ii < str.length) {
+            buf[ii] = Number("0x" + str.slice(ii, ii + 2));
+            ii += 2;
+        }
+        return buf;
     };
     cryptoDecryptBrowser = async function (kek, jwe) {
         let cek;
@@ -334,7 +366,6 @@
         ), "jwe failed validation");
     };
     runMe = async function () {
-        //!! debugInline("sldfkj");
         if (!local.isBrowser) {
             return;
         }
