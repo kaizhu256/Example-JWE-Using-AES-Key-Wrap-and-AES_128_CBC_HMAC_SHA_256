@@ -173,13 +173,24 @@
     let assertOrThrow;
     let base64urlFromBuffer;
     let base64urlToBuffer;
+    let crypto;
     let cryptoDecryptBrowser;
     let cryptoEncryptBrowser;
     let cryptoKeyWrapNode;
     let cryptoValidateHeader;
     let hexFromBuffer;
     let hexToBuffer;
+    let isBrowser;
     let runMe;
+    crypto = globalThis.crypto;
+    if (
+        crypto && crypto.subtle
+        && typeof crypto.subtle.wrapKey === "function"
+    ) {
+        isBrowser = true;
+    } else {
+        crypto = require("crypto");
+    }
     assertJsonEqual = local.assertJsonEqual;
     assertOrThrow = local.assertOrThrow;
     base64urlFromBuffer = function (buf) {
@@ -240,7 +251,7 @@
         str = "";
         ii = 0;
         while (ii < buf.byteLength) {
-            str += buf[ii].toString(16);
+            str += buf[ii].toString(16).padStart(2, "0");
             ii += 1;
         }
         return str;
@@ -254,7 +265,7 @@
         buf = new Uint8Array(str.length >> 1);
         ii = 0;
         while (ii < str.length) {
-            buf[ii] = Number("0x" + str.slice(ii, ii + 2));
+            buf[ii >> 1] = Number("0x" + str.slice(ii, ii + 2));
             ii += 2;
         }
         return buf;
@@ -262,12 +273,10 @@
     cryptoDecryptBrowser = async function (kek, jwe) {
         let cek;
         let ciphertext;
-        let crypto;
         let header;
         let iv;
         let tag;
         let tmp;
-        crypto = globalThis.crypto;
         // validate jwe
         assertOrThrow((
             /^[\w\-]+?\.[\w\-]+?\.[\w\-]+?\.[\w\-]*?\.[\w\-]+?$/
@@ -302,9 +311,7 @@
         return new TextDecoder().decode(tmp);
     };
     cryptoEncryptBrowser = async function (kek, plaintext, header, cek, iv) {
-        let crypto;
         let tmp;
-        crypto = globalThis.crypto;
         header = header || {
             "alg": "A256KW",
             "enc": "A256GCM"
@@ -369,6 +376,27 @@
         if (!local.isBrowser) {
             return;
         }
+        // 4.1 Wrap 128 bits of Key Data with a 128-bit KEK
+        // https://tools.ietf.org/html/rfc3394#section-4.1
+        let cek;
+        let kek;
+        cek = hexToBuffer("00112233445566778899AABBCCDDEEFF");
+        kek = hexToBuffer("000102030405060708090A0B0C0D0E0F");
+        kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
+            "wrapKey"
+        ]);
+        cek = await crypto.subtle.importKey("raw", cek, {
+            name: "AES-GCM"
+        }, true, [
+            "encrypt"
+        ]);
+        cek = hexFromBuffer(new Uint8Array(
+            await crypto.subtle.wrapKey("raw", cek, kek, "AES-KW")
+        ));
+        assertJsonEqual(
+            cek,
+            "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5"
+        );
         let myJwe;
         let myKek;
         let myPlaintext;
@@ -492,7 +520,7 @@
      */
         let AA;
         let BB;
-        let crypto;
+        let cipher;
         let ii;
         let iv;
         let jj;
@@ -504,10 +532,10 @@
         ii = 0;
         iv = new Uint8Array(16);
         nn = 4;
-        crypto = (
+        cipher = (
             mode === "unwrap"
-            ? require("crypto").createDecipheriv
-            : require("crypto").createCipheriv
+            ? crypto.createDecipheriv
+            : crypto.createCipheriv
         );
         // init loop
         loop = function () {
@@ -529,7 +557,7 @@
             AA[14] = RR[8 * ii + 6];
             AA[15] = RR[8 * ii + 7];
             // encrypt / decrypt RR
-            BB = crypto("aes-128-cbc", KK, iv);
+            BB = cipher("aes-128-cbc", KK, iv);
             BB.setAutoPadding(false);
             BB = Buffer.concat([
                 BB.update(AA), BB.final()
