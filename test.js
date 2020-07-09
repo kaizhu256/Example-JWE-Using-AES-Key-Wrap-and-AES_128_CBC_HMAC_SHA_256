@@ -336,6 +336,7 @@
      */
         let cipher;
         let ciphertext;
+        let tag;
         header = header || {
             "alg": "A256KW",
             "enc": "A256GCM"
@@ -356,7 +357,7 @@
         // env - node
         if (!isBrowser) {
             iv = iv || base64urlFromBuffer(crypto.randomBytes(12));
-            cipher = crypto.createCipheriv(debugInline(
+            cipher = crypto.createCipheriv((
                 cek.byteLength === 16
                 ? "aes-128-gcm"
                 : cek.byteLength === 24
@@ -364,16 +365,24 @@
                 : "aes-256-gcm"
             ), cek, base64urlToBuffer(iv));
             cipher.setAAD(new TextEncoder().encode(header));
-            ciphertext = Buffer.concat([
-                cipher.update(new TextEncoder().encode(plaintext)), cipher.final()
-            ]);
-            return Promise.resolve(
-                header
-                + "." + base64urlFromBuffer(jweKeyWrapNode(kek, cek))
-                + "." + iv
-                + "." + base64urlFromBuffer(ciphertext)
-                + "." + base64urlFromBuffer(cipher.getAuthTag())
-            );
+            ciphertext = [
+                cipher.update(new TextEncoder().encode(plaintext))
+            ];
+            ciphertext.push(cipher.final());
+            ciphertext = Buffer.concat(ciphertext);
+            cek = jweKeyWrapNode(kek, cek);
+            tag = cipher.getAuthTag();
+            return new Promise(function (resolve) {
+                setTimeout(function () {
+                    resolve(
+                        header
+                        + "." + base64urlFromBuffer(cek)
+                        + "." + iv
+                        + "." + base64urlFromBuffer(ciphertext)
+                        + "." + base64urlFromBuffer(tag)
+                    );
+                });
+            });
         }
         // env - browser
         iv = iv || base64urlFromBuffer(
@@ -389,18 +398,20 @@
             iv: base64urlToBuffer(iv),
             name: "AES-GCM"
         }, cek, new TextEncoder().encode(plaintext)));
+        tag = ciphertext.subarray(-16);
+        ciphertext = ciphertext.subarray(0, -16);
         kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
             "wrapKey"
         ]);
-        cek = base64urlFromBuffer(new Uint8Array(
+        cek = new Uint8Array(
             await crypto.subtle.wrapKey("raw", cek, kek, "AES-KW")
-        ));
+        );
         return (
             header
-            + "." + cek
+            + "." + base64urlFromBuffer(cek)
             + "." + iv
-            + "." + base64urlFromBuffer(ciphertext.subarray(0, -16))
-            + "." + base64urlFromBuffer(ciphertext.subarray(-16))
+            + "." + base64urlFromBuffer(ciphertext)
+            + "." + base64urlFromBuffer(tag)
         );
     };
     jweKeyUnwrapNode = function (kek, cek) {
