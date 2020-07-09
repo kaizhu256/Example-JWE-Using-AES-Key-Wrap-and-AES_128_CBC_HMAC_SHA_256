@@ -181,20 +181,25 @@
     assertJsonEqual = local.assertJsonEqual;
     assertOrThrow = local.assertOrThrow;
     base64urlFromBuffer = function (buf) {
-        let base64url;
+    /*
+     * this function will base64url encode <buf> to str
+     */
         let ii;
+        let str;
+        // browser
         if (typeof globalThis.btoa === "function") {
-            base64url = "";
+            str = "";
             ii = 0;
             while (ii < buf.byteLength) {
-                base64url += String.fromCharCode(buf[ii]);
+                str += String.fromCharCode(buf[ii]);
                 ii += 1;
             }
-            base64url = globalThis.btoa(base64url);
+            str = globalThis.btoa(str);
+        // node
         } else {
-            base64url = buf.toString("base64");
+            str = Buffer.from(buf).toString("base64");
         }
-        return base64url.replace((
+        return str.replace((
             /\+/g
         ), "-").replace((
             /\//g
@@ -202,20 +207,25 @@
             /\=*?$/
         ), "");
     };
-    base64urlToBuffer = function (base64url) {
-        base64url = base64url.replace((
+    base64urlToBuffer = function (str) {
+    /*
+     * this function will base64url decode <str> to buf
+     */
+        str = str.replace((
             /-/g
         ), "+").replace((
             /_/g
         ), "/").replace((
             /\=*?$/
         ), "");
+        // browser
         if (typeof globalThis.atob === "function") {
-            return Uint8Array.from(globalThis.atob(base64url), function (chr) {
+            return Uint8Array.from(globalThis.atob(str), function (chr) {
                 return chr.charCodeAt(0);
             });
         }
-        return Buffer.from(base64url, "base64");
+        // node
+        return Buffer.from(str, "base64");
     };
     cryptoDecryptBrowser = async function (kek, jwe) {
         let cek;
