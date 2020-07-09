@@ -493,6 +493,7 @@
         while (jj < 6) {
             ii = 1;
             while (ii <= nn) {
+                tt = jj * nn + ii;
                 aa[8] = rr[ii * 8];
                 aa[9] = rr[ii * 8 + 1];
                 aa[10] = rr[ii * 8 + 2];
@@ -512,6 +513,10 @@
                 aa.set(bb.update(aa));
                 bb = bb.final();
                 aa.set(bb, 8 - bb.byteLength);
+                aa[4] ^= (tt >>> 24) & 0xff;
+                aa[5] ^= (tt >> 16) & 0xff;
+                aa[6] ^= (tt >> 8) & 0xff;
+                aa[7] ^= tt & 0xff;
                 rr[ii * 8 + 0] = aa[8];
                 rr[ii * 8 + 1] = aa[9];
                 rr[ii * 8 + 2] = aa[10];
@@ -520,11 +525,6 @@
                 rr[ii * 8 + 5] = aa[13];
                 rr[ii * 8 + 6] = aa[14];
                 rr[ii * 8 + 7] = aa[15];
-                tt = jj * nn + ii;
-                aa[4] ^= (tt >>> 24) & 0xff;
-                aa[5] ^= (tt >> 16) & 0xff;
-                aa[6] ^= (tt >> 8) & 0xff;
-                aa[7] ^= tt & 0xff;
                 ii += 1;
             }
             jj += 1;
@@ -638,7 +638,7 @@
             + "yourself. But you cannot trust us to let you face trouble "
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
-        myKek = base64urlFromBuffer(globalThis.crypto.getRandomValues(
+        myKek = base64urlFromBuffer(crypto.getRandomValues(
             new Uint8Array(32)
         ));
         myJwe = await jweEncryptBrowser(myKek, (
