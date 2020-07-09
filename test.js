@@ -423,7 +423,13 @@
                 aa[13] = rr[8 * ii + 5];
                 aa[14] = rr[8 * ii + 6];
                 aa[15] = rr[8 * ii + 7];
-                bb = crypto.createCipheriv("aes-128-cbc", kek, iv);
+                bb = crypto.createCipheriv((
+                    kek.byteLength === 16
+                    ? "aes-128-cbc"
+                    : kek.byteLength === 24
+                    ? "aes-192-cbc"
+                    : "aes-256-cbc"
+                ), kek, iv);
                 bb.setAutoPadding(false);
                 aa.set(bb.update(aa));
                 bb = bb.final();
@@ -586,10 +592,13 @@
         }
         cek = hexToBuffer("00112233445566778899AABBCCDDEEFF");
         kek = hexToBuffer("000102030405060708090A0B0C0D0E0F");
-        tmp = jweKeyWrapNode(kek, cek);
-        tmp = hexFromBuffer(tmp);
+        tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
         assertEqual(tmp, "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5");
         console.log("wrapped-key - " + tmp);
+        cek = hexToBuffer("00112233445566778899aabbccddeeff");
+        kek = hexToBuffer("000102030405060708090a0b0c0d0e0f1011121314151617");
+        tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
+        assertEqual(tmp, "96778b25ae6ca435f92b5b97c050aed2468ab8a17ad84e5d");
         return;
     };
     await runMe();
