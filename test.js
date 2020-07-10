@@ -318,7 +318,7 @@
         // env - node
         if (!isBrowser) {
             cek = jweKeyUnwrapNode(kek, cek);
-            debugInline(cek.length, cek, kek);
+            debugInline(cek.length, base64urlFromBuffer(cek));
             cipher = crypto.createDecipheriv((
                 cek.byteLength === 16
                 ? "aes-128-gcm"
@@ -363,6 +363,7 @@
      * this function will A256KW+A256GCM-encrypt <plaintext> with given <kek>
      * to jwe
      */
+        let aad;
         let cipher;
         let ciphertext;
         let tag;
@@ -383,6 +384,7 @@
         header = base64urlFromBuffer(
             new TextEncoder().encode(JSON.stringify(header))
         );
+        aad = new TextEncoder().encode(header);
         plaintext = new TextEncoder().encode(plaintext);
         // env - node
         if (!isBrowser) {
@@ -394,7 +396,7 @@
                 ? "aes-192-gcm"
                 : "aes-256-gcm"
             ), cek, base64urlToBuffer(iv));
-            cipher.setAAD(Buffer.from(header));
+            cipher.setAAD(aad);
             ciphertext = [
                 cipher.update(plaintext)
             ];
@@ -423,7 +425,7 @@
         ]).then(function (data) {
             cek = data;
             return crypto.subtle.encrypt({
-                additionalData: new TextEncoder().encode(header),
+                additionalData: aad,
                 iv: base64urlToBuffer(iv),
                 name: "AES-GCM"
             }, cek, plaintext);
