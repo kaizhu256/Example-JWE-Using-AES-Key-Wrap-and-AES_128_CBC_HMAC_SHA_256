@@ -167,7 +167,7 @@
 
 
 // run shared js-env code - function
-(async function () {
+(async function (local) {
     "use strict";
     let assertEqual;
     let assertOrThrow;
@@ -250,7 +250,7 @@
         if (typeof globalThis.btoa === "function") {
             str = "";
             ii = 0;
-            while (ii < buf.byteLength) {
+            while (ii < buf.length) {
                 str += String.fromCharCode(buf[ii]);
                 ii += 1;
             }
@@ -290,7 +290,7 @@
         let str;
         str = "";
         ii = 0;
-        while (ii < buf.byteLength) {
+        while (ii < buf.length) {
             str += buf[ii].toString(16).padStart(2, "0");
             ii += 1;
         }
@@ -872,4 +872,9 @@
         });
     };
     await testCase_jweEncrypt_default();
-}());
+    // export
+    globalThis.local = local;
+    local.bufferFromBase64url = bufferFromBase64url;
+    local.bufferFromHex = bufferFromHex;
+    local.bufferToHex = bufferToHex;
+}(globalThis.globalLocal));
