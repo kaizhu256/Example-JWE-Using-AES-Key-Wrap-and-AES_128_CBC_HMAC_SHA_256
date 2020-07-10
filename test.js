@@ -815,7 +815,7 @@
             cipherNode: "aes-192-cbc",
             hmac: "SHA-384",
             hmacNode: "sha384",
-            ivByteLength: 24
+            ivByteLength: 16
         },
         "A256CBC-HS512": {
             cekByteLength: 64,
@@ -823,7 +823,7 @@
             cipherNode: "aes-256-cbc",
             hmac: "SHA-512",
             hmacNode: "sha512",
-            ivByteLength: 32
+            ivByteLength: 16
         },
         "A128GCM": {
             cekByteLength: 16,
@@ -973,7 +973,7 @@
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
         [
-            "", "Live long and prosper.", (
+            "", "\u1234", "Live long and prosper.", (
                 "You can trust us to stick with you through thick and "
                 + "thin\u2013to the bitter end. And you can trust us to "
                 + "keep any secret of yours\u2013closer than you keep it "
@@ -986,8 +986,7 @@
                 "A128KW", "A192KW", "A256KW"
             ].forEach(function (alg) {
                 [
-                    "A128CBC-HS256",
-                    //!! "A192CBC-HS384", "A256CBC-HS512",
+                    "A128CBC-HS256", "A192CBC-HS384", "A256CBC-HS512",
                     "A128GCM", "A192GCM", "A256GCM"
                 ].forEach(async function (enc) {
                     let jwe;
