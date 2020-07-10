@@ -422,7 +422,7 @@
             // encrypt plaintext
             cipher = crypto.createCipheriv(enc.cipherNode, (
                 enc.hmac
-                ? cek.slice(cek.byteLength > 1)
+                ? cek.slice(cek.byteLength >> 1)
                 : cek
             ), iv);
             if (!enc.hmac) {
@@ -433,9 +433,14 @@
             ];
             ciphertext.push(cipher.final());
             ciphertext = Buffer.concat(ciphertext);
+            // init tag
+            tag = (
+                enc.hmac
+                ? jweHmac(cek, header, iv, ciphertext)
+                : cipher.getAuthTag()
+            );
             // key-wrap cek
             cek = jweKeyWrap(kek, cek);
-            tag = cipher.getAuthTag();
             // return compact-form-jwe
             return Promise.resolve().then(function () {
                 return (
@@ -526,7 +531,7 @@
             "sha256",
             cek.slice(0, 16)
         ).update(tag).digest();
-        return bufferToBase64url(tag.slice(0, tag.length >> 1));
+        return tag.slice(0, tag.length >> 1);
     };
     jweKeyUnwrap = function (kek, cek) {
     /*
@@ -835,6 +840,27 @@
     testCase_jweKeyWrap_default();
     testCase_jweEncrypt_default = async function () {
         let tmp;
+        // https://tools.ietf.org/html/rfc7516#appendix-A.3
+        // A.3.  Example JWE Using AES Key Wrap and AES_128_CBC_HMAC_SHA_256
+        tmp = await jweEncrypt("GawgguFyGrWKav7AX4VKUg", (
+            "Live long and prosper."
+        ), {
+            "alg": "A128KW",
+            "enc": "A128CBC-HS256"
+        }, [
+            4, 211, 31, 197, 84, 157, 252, 254, 11, 100, 157, 250, 63, 170, 106,
+            206, 107, 124, 212, 45, 111, 107, 9, 219, 200, 177, 0, 240, 143,
+            156, 44, 207
+        ], "AxY8DCtDaGlsbGljb3RoZQ");
+        assertEqual(tmp, (
+            "eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0."
+            + "6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ."
+            + "AxY8DCtDaGlsbGljb3RoZQ."
+            + "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY."
+            + "U0m_YmjN04DJvceFICbCVQ"
+        ));
+        tmp = await jweDecrypt("GawgguFyGrWKav7AX4VKUg", tmp);
+        assertEqual(tmp, "Live long and prosper.");
         // https://tools.ietf.org/id/draft-ietf-jose-cookbook-02.html#rfc.section.4.8
         // 4.8. Key Wrap using AES-KeyWrap with AES-GCM
         tmp = await jweEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
@@ -919,52 +945,52 @@
     local.bufferFromHex = bufferFromHex;
     local.bufferToHex = bufferToHex;
 
-    // test
-    (function () {
-        if (isBrowser) {
-            return;
-        }
-        let cek;
-        let cipher;
-        let ciphertext;
-        let header;
-        let iv;
-        let plaintext;
-        let tag;
-        cek = Buffer.from([
-            4, 211, 31, 197, 84, 157, 252, 254, 11, 100, 157, 250, 63, 170, 106,
-            206, 107, 124, 212, 45, 111, 107, 9, 219, 200, 177, 0, 240, 143,
-            156, 44, 207
-        ]);
-        iv = Buffer.from([
-            3, 22, 60, 12, 43, 67, 104, 105,
-            108, 108, 105, 99, 111, 116, 104, 101
-        ]);
-        plaintext = Buffer.from([
-            76, 105, 118, 101, 32, 108, 111, 110, 103, 32, 97,
-            110, 100, 32, 112, 114, 111, 115, 112, 101, 114, 46
-        ]);
-        cipher = crypto.createCipheriv(
-            "aes-128-cbc",
-            Buffer.from(cek).slice(16),
-            Buffer.from(iv)
-        );
-        ciphertext = Array.from(Buffer.concat([
-            cipher.update(Buffer.from(plaintext)), cipher.final()
-        ]));
-        local.assertJsonEqual(ciphertext, [
-            40, 57, 83, 181, 119, 33, 133, 148, 198, 185, 243, 24, 152, 230, 6,
-            75, 129, 223, 127, 19, 210, 82, 183, 230, 168, 33, 215, 104, 143,
-            112, 56, 102
-        ]);
+    //!! // test
+    //!! (function () {
+        //!! if (isBrowser) {
+            //!! return;
+        //!! }
+        //!! let cek;
+        //!! let cipher;
+        //!! let ciphertext;
+        //!! let header;
+        //!! let iv;
+        //!! let plaintext;
+        //!! let tag;
+        //!! cek = Buffer.from([
+            //!! 4, 211, 31, 197, 84, 157, 252, 254, 11, 100, 157, 250, 63, 170, 106,
+            //!! 206, 107, 124, 212, 45, 111, 107, 9, 219, 200, 177, 0, 240, 143,
+            //!! 156, 44, 207
+        //!! ]);
+        //!! iv = Buffer.from([
+            //!! 3, 22, 60, 12, 43, 67, 104, 105,
+            //!! 108, 108, 105, 99, 111, 116, 104, 101
+        //!! ]);
+        //!! plaintext = Buffer.from([
+            //!! 76, 105, 118, 101, 32, 108, 111, 110, 103, 32, 97,
+            //!! 110, 100, 32, 112, 114, 111, 115, 112, 101, 114, 46
+        //!! ]);
+        //!! cipher = crypto.createCipheriv(
+            //!! "aes-128-cbc",
+            //!! Buffer.from(cek).slice(16),
+            //!! Buffer.from(iv)
+        //!! );
+        //!! ciphertext = Array.from(Buffer.concat([
+            //!! cipher.update(Buffer.from(plaintext)), cipher.final()
+        //!! ]));
+        //!! local.assertJsonEqual(ciphertext, [
+            //!! 40, 57, 83, 181, 119, 33, 133, 148, 198, 185, 243, 24, 152, 230, 6,
+            //!! 75, 129, 223, 127, 19, 210, 82, 183, 230, 168, 33, 215, 104, 143,
+            //!! 112, 56, 102
+        //!! ]);
 
-        header = Buffer.from([
-            101, 121, 74, 104, 98, 71, 99, 105, 79, 105, 74, 66, 77, 84, 73, 52,
-            83, 49, 99, 105, 76, 67, 74, 108, 98, 109, 77, 105, 79, 105, 74, 66,
-            77, 84, 73, 52, 81, 48, 74, 68, 76, 85, 104, 84, 77, 106, 85, 50,
-            73, 110, 48
-        ]);
-        tag = jweHmac(cek, header, iv, ciphertext);
-        assertEqual(tag, "U0m_YmjN04DJvceFICbCVQ");
-    }());
+        //!! header = Buffer.from([
+            //!! 101, 121, 74, 104, 98, 71, 99, 105, 79, 105, 74, 66, 77, 84, 73, 52,
+            //!! 83, 49, 99, 105, 76, 67, 74, 108, 98, 109, 77, 105, 79, 105, 74, 66,
+            //!! 77, 84, 73, 52, 81, 48, 74, 68, 76, 85, 104, 84, 77, 106, 85, 50,
+            //!! 73, 110, 48
+        //!! ]);
+        //!! tag = jweHmac(cek, header, iv, ciphertext);
+        //!! assertEqual(tag, "U0m_YmjN04DJvceFICbCVQ");
+    //!! }());
 }(globalThis.globalLocal));
