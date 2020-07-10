@@ -504,7 +504,7 @@
     jweTag = function (enc, header, cek, iv, ciphertext) {
         let ii;
         let tag;
-        cek = cek.subarray(0, 16);
+        cek = cek.subarray(0, cek.length >> 1);
         // init tag
         tag = new Uint8Array(
             header.length + iv.length + ciphertext.length + 8
@@ -935,7 +935,7 @@
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
         [
-            "", (
+            "", "Live long and prosper.", (
                 "You can trust us to stick with you through thick and "
                 + "thin\u2013to the bitter end. And you can trust us to "
                 + "keep any secret of yours\u2013closer than you keep it "
