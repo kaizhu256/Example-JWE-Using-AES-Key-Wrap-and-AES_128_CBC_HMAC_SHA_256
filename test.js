@@ -287,18 +287,23 @@
         }
         return str;
     };
-    bufferRandom = function (nn) {
+    bufferRandom = function (nn, mode) {
     /*
      * this function will generate cryptographically-secure-random buf
      * with byteLength <nn>
      */
-        return (
+        nn = (
             (
                 globalThis.crypto
                 && typeof globalThis.crypto.getRandomValues === "function"
             )
             ? globalThis.crypto.getRandomValues(new Uint8Array(nn))
             : require("crypto").randomBytes(nn)
+        );
+        return (
+            mode === "base64url"
+            ? bufferToBase64url(nn)
+            : nn
         );
     };
     jweDecrypt = function (kek, jwe) {
@@ -794,7 +799,7 @@
                     let jwe;
                     let kek;
                     let plaintext;
-                    kek = bufferToBase64url(bufferRandom(alg >> 3));
+                    kek = bufferRandom(alg >> 3, "base64url");
                     jwe = await jweEncrypt(
                         kek,
                         plaintext0,
