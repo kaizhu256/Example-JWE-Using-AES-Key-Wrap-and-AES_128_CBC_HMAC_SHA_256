@@ -242,6 +242,37 @@
             : Buffer.from(str, "base64")
         );
     };
+    bufferFromHex = function (str) {
+    /*
+     * this function will hex-decode <str> to buf
+     */
+        let buf;
+        let ii;
+        str = str.replace((
+            /\s+/g
+        ), "");
+        buf = new Uint8Array(str.length >> 1);
+        ii = 0;
+        while (ii < str.length) {
+            buf[ii >> 1] = Number("0x" + str.slice(ii, ii + 2));
+            ii += 2;
+        }
+        return buf;
+    };
+    bufferRandom = function (nn) {
+    /*
+     * this function will generate cryptographically-secure-random buf
+     * with byteLength <nn>
+     */
+        return (
+            (
+                globalThis.crypto
+                && typeof globalThis.crypto.getRandomValues === "function"
+            )
+            ? globalThis.crypto.getRandomValues(new Uint8Array(nn))
+            : require("crypto").randomBytes(nn)
+        );
+    };
     bufferToBase64url = function (buf) {
     /*
      * this function will base64url-encode <buf> to str
@@ -270,23 +301,6 @@
             /\=*?$/
         ), "");
     };
-    bufferFromHex = function (str) {
-    /*
-     * this function will hex-decode <str> to buf
-     */
-        let buf;
-        let ii;
-        str = str.replace((
-            /\s+/g
-        ), "");
-        buf = new Uint8Array(str.length >> 1);
-        ii = 0;
-        while (ii < str.length) {
-            buf[ii >> 1] = Number("0x" + str.slice(ii, ii + 2));
-            ii += 2;
-        }
-        return buf;
-    };
     bufferToHex = function (buf) {
     /*
      * this function will hex-encode <buf> to str
@@ -300,20 +314,6 @@
             ii += 1;
         }
         return str;
-    };
-    bufferRandom = function (nn) {
-    /*
-     * this function will generate cryptographically-secure-random buf
-     * with byteLength <nn>
-     */
-        return (
-            (
-                globalThis.crypto
-                && typeof globalThis.crypto.getRandomValues === "function"
-            )
-            ? globalThis.crypto.getRandomValues(new Uint8Array(nn))
-            : require("crypto").randomBytes(nn)
-        );
     };
     jweDecrypt = function (kek, jwe) {
     /*
