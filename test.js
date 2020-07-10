@@ -171,18 +171,18 @@
     "use strict";
     let assertEqual;
     let assertOrThrow;
-    let base64urlFromBuffer;
-    let base64urlToBuffer;
+    let bufferFromBase64url;
+    let bufferFromHex;
+    let bufferRandom;
+    let bufferToBase64url;
+    let bufferToHex;
     let crypto;
-    let hexFromBuffer;
-    let hexToBuffer;
     let isBrowser;
     let jweDecrypt;
     let jweEncrypt;
     let jweKeyUnwrapNode;
     let jweKeyWrapNode;
     let jweValidateHeader;
-    let randomBuffer;
     let runMe;
     crypto = globalThis.crypto;
     if (
@@ -209,7 +209,28 @@
             throw new Error(msg);
         }
     };
-    base64urlFromBuffer = function (buf) {
+    bufferFromBase64url = function (str) {
+    /*
+     * this function will base64url-decode <str> to buf
+     */
+        // convert base64url to base64
+        str = str.replace((
+            /-/g
+        ), "+").replace((
+            /_/g
+        ), "/").replace((
+            /\=*?$/
+        ), "");
+        // env - browser
+        if (typeof globalThis.atob === "function") {
+            return Uint8Array.from(globalThis.atob(str), function (chr) {
+                return chr.charCodeAt(0);
+            });
+        }
+        // env - node
+        return Buffer.from(str, "base64");
+    };
+    bufferToBase64url = function (buf) {
     /*
      * this function will base64url-encode <buf> to str
      */
@@ -237,42 +258,7 @@
             /\=*?$/
         ), "");
     };
-    base64urlToBuffer = function (str) {
-    /*
-     * this function will base64url-decode <str> to buf
-     */
-        // convert base64url to base64
-        str = str.replace((
-            /-/g
-        ), "+").replace((
-            /_/g
-        ), "/").replace((
-            /\=*?$/
-        ), "");
-        // env - browser
-        if (typeof globalThis.atob === "function") {
-            return Uint8Array.from(globalThis.atob(str), function (chr) {
-                return chr.charCodeAt(0);
-            });
-        }
-        // env - node
-        return Buffer.from(str, "base64");
-    };
-    hexFromBuffer = function (buf) {
-    /*
-     * this function will hex-encode <buf> to str
-     */
-        let ii;
-        let str;
-        str = "";
-        ii = 0;
-        while (ii < buf.byteLength) {
-            str += buf[ii].toString(16).padStart(2, "0");
-            ii += 1;
-        }
-        return str;
-    };
-    hexToBuffer = function (str) {
+    bufferFromHex = function (str) {
     /*
      * this function will hex-decode <str> to buf
      */
@@ -286,9 +272,24 @@
         }
         return buf;
     };
-    randomBuffer = function (nn) {
+    bufferToHex = function (buf) {
     /*
-     * this function will return random-bytes with length <nn>
+     * this function will hex-encode <buf> to str
+     */
+        let ii;
+        let str;
+        str = "";
+        ii = 0;
+        while (ii < buf.byteLength) {
+            str += buf[ii].toString(16).padStart(2, "0");
+            ii += 1;
+        }
+        return str;
+    };
+    bufferRandom = function (nn) {
+    /*
+     * this function will generate cryptographically-secure-random buf
+     * with byteLength <nn>
      */
         return (
             (
@@ -318,13 +319,13 @@
         // init var
         [
             header, cek, iv, ciphertext, tag
-        ] = jwe.split(".").map(base64urlToBuffer);
-        kek = base64urlToBuffer(kek);
+        ] = jwe.split(".").map(bufferFromBase64url);
+        kek = bufferFromBase64url(kek);
         // validate header
         jweValidateHeader(JSON.parse(new TextDecoder().decode(
             header
         )), kek, cek, 8);
-        header = new TextEncoder().encode(base64urlFromBuffer(header));
+        header = new TextEncoder().encode(bufferToBase64url(header));
         // env - node
         if (!isBrowser) {
             cek = jweKeyUnwrapNode(kek, cek);
@@ -383,22 +384,22 @@
             "alg": "A256KW",
             "enc": "A256GCM"
         };
-        kek = base64urlToBuffer(kek);
-        cek = base64urlToBuffer(cek || base64urlFromBuffer(randomBuffer(
+        kek = bufferFromBase64url(kek);
+        cek = bufferFromBase64url(cek || bufferToBase64url(bufferRandom(
             header.enc !== "A256GCM"
             ? 16
             : 32
         )));
         // validate header
         jweValidateHeader(header, kek, cek, 0);
-        header = base64urlFromBuffer(
+        header = bufferToBase64url(
             new TextEncoder().encode(JSON.stringify(header))
         );
         header = new TextEncoder().encode(header);
         iv = (
             iv
-            ? base64urlToBuffer(iv)
-            : randomBuffer(12)
+            ? bufferFromBase64url(iv)
+            : bufferRandom(12)
         );
         plaintext = new TextEncoder().encode(plaintext);
         // env - node
@@ -421,10 +422,10 @@
             return Promise.resolve().then(function () {
                 return (
                     new TextDecoder().decode(header)
-                    + "." + base64urlFromBuffer(cek)
-                    + "." + base64urlFromBuffer(iv)
-                    + "." + base64urlFromBuffer(ciphertext)
-                    + "." + base64urlFromBuffer(tag)
+                    + "." + bufferToBase64url(cek)
+                    + "." + bufferToBase64url(iv)
+                    + "." + bufferToBase64url(ciphertext)
+                    + "." + bufferToBase64url(tag)
                 );
             });
         }
@@ -454,16 +455,16 @@
             cek = new Uint8Array(data);
             return (
                 new TextDecoder().decode(header)
-                + "." + base64urlFromBuffer(cek)
-                + "." + base64urlFromBuffer(iv)
-                + "." + base64urlFromBuffer(ciphertext)
-                + "." + base64urlFromBuffer(tag)
+                + "." + bufferToBase64url(cek)
+                + "." + bufferToBase64url(iv)
+                + "." + bufferToBase64url(ciphertext)
+                + "." + bufferToBase64url(tag)
             );
         });
     };
     jweKeyUnwrapNode = function (kek, cek) {
     /*
-     * this function will A256KW-wrap <cek> with given <kek>
+     * this function will A256KW-key-unwrap <cek> with given <kek>
      * https://tools.ietf.org/html/rfc3394#section-2.2.2
      */
         let aa;
@@ -547,7 +548,7 @@
     };
     jweKeyWrapNode = function (kek, cek) {
     /*
-     * this function will A256KW-wrap <cek> with given <kek>
+     * this function will A256KW-key-wrap <cek> with given <kek>
      * https://tools.ietf.org/html/rfc3394#section-2.2.1
      */
         let aa;
@@ -659,8 +660,8 @@
         // 4.1 Wrap 128 bits of Key Data with a 128-bit KEK
         let cek;
         let kek;
-        cek = hexToBuffer("00112233445566778899AABBCCDDEEFF");
-        kek = hexToBuffer("000102030405060708090A0B0C0D0E0F");
+        cek = bufferFromHex("00112233445566778899AABBCCDDEEFF");
+        kek = bufferFromHex("000102030405060708090A0B0C0D0E0F");
         kek = await crypto.subtle.importKey("raw", kek, "AES-KW", false, [
             "wrapKey"
         ]);
@@ -669,7 +670,7 @@
         }, true, [
             "encrypt"
         ]);
-        cek = hexFromBuffer(new Uint8Array(
+        cek = bufferToHex(new Uint8Array(
             await crypto.subtle.wrapKey("raw", cek, kek, "AES-KW")
         ));
         assertEqual(
@@ -727,7 +728,7 @@
             + "yourself. But you cannot trust us to let you face trouble "
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
-        myKek = base64urlFromBuffer(randomBuffer(32));
+        myKek = bufferToBase64url(bufferRandom(32));
         myJwe = await jweEncrypt(myKek, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
@@ -756,51 +757,51 @@
             return;
         }
         // 4.1 Wrap 128 bits of Key Data with a 128-bit KEK
-        cek = hexToBuffer("00112233445566778899aabbccddeeff");
-        kek = hexToBuffer("000102030405060708090a0b0c0d0e0f");
-        tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
+        cek = bufferFromHex("00112233445566778899aabbccddeeff");
+        kek = bufferFromHex("000102030405060708090a0b0c0d0e0f");
+        tmp = bufferToHex(jweKeyWrapNode(kek, cek));
         assertEqual(tmp, "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5");
         console.log("wrapped-key - " + tmp);
-        cek = hexFromBuffer(jweKeyUnwrapNode(kek, hexToBuffer(tmp)));
+        cek = bufferToHex(jweKeyUnwrapNode(kek, bufferFromHex(tmp)));
         assertEqual(cek, "00112233445566778899aabbccddeeff");
         // 4.2 Wrap 128 bits of Key Data with a 192-bit KEK
-        cek = hexToBuffer("00112233445566778899aabbccddeeff");
-        kek = hexToBuffer("000102030405060708090a0b0c0d0e0f1011121314151617");
-        tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
+        cek = bufferFromHex("00112233445566778899aabbccddeeff");
+        kek = bufferFromHex("000102030405060708090a0b0c0d0e0f1011121314151617");
+        tmp = bufferToHex(jweKeyWrapNode(kek, cek));
         assertEqual(tmp, "96778b25ae6ca435f92b5b97c050aed2468ab8a17ad84e5d");
-        cek = hexFromBuffer(jweKeyUnwrapNode(kek, hexToBuffer(tmp)));
+        cek = bufferToHex(jweKeyUnwrapNode(kek, bufferFromHex(tmp)));
         assertEqual(cek, "00112233445566778899aabbccddeeff");
         // 4.3 Wrap 128 bits of Key Data with a 256-bit KEK
-        cek = hexToBuffer("00112233445566778899aabbccddeeff");
-        kek = hexToBuffer(
+        cek = bufferFromHex("00112233445566778899aabbccddeeff");
+        kek = bufferFromHex(
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
         );
-        tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
+        tmp = bufferToHex(jweKeyWrapNode(kek, cek));
         assertEqual(tmp, "64e8c3f9ce0f5ba263e9777905818a2a93c8191e7d6e8ae7");
-        cek = hexFromBuffer(jweKeyUnwrapNode(kek, hexToBuffer(tmp)));
+        cek = bufferToHex(jweKeyUnwrapNode(kek, bufferFromHex(tmp)));
         assertEqual(cek, "00112233445566778899aabbccddeeff");
         // 4.4 Wrap 192 bits of Key Data with a 192-bit KEK
-        cek = hexToBuffer("00112233445566778899aabbccddeeff0001020304050607");
-        kek = hexToBuffer("000102030405060708090a0b0c0d0e0f1011121314151617");
-        tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
+        cek = bufferFromHex("00112233445566778899aabbccddeeff0001020304050607");
+        kek = bufferFromHex("000102030405060708090a0b0c0d0e0f1011121314151617");
+        tmp = bufferToHex(jweKeyWrapNode(kek, cek));
         assertEqual(tmp, (
             "031d33264e15d33268f24ec260743edce1c6c7ddee725a936ba814915c6762d2"
         ));
-        cek = hexFromBuffer(jweKeyUnwrapNode(kek, hexToBuffer(tmp)));
+        cek = bufferToHex(jweKeyUnwrapNode(kek, bufferFromHex(tmp)));
         assertEqual(cek, "00112233445566778899aabbccddeeff0001020304050607");
         // 4.5 Wrap 192 bits of Key Data with a 256-bit KEK
-        cek = hexToBuffer(
+        cek = bufferFromHex(
             "00112233445566778899aabbccddeeff000102030405060708090a0b0c0d0e0f"
         );
-        kek = hexToBuffer(
+        kek = bufferFromHex(
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
         );
-        tmp = hexFromBuffer(jweKeyWrapNode(kek, cek));
+        tmp = bufferToHex(jweKeyWrapNode(kek, cek));
         assertEqual(tmp, (
             "28c9f404c4b810f4cbccb35cfb87f8263f5786e2d80ed326"
             + "cbc7f0e71a99f43bfb988b9b7a02dd21"
         ));
-        cek = hexFromBuffer(jweKeyUnwrapNode(kek, hexToBuffer(tmp)));
+        cek = bufferToHex(jweKeyUnwrapNode(kek, bufferFromHex(tmp)));
         assertEqual(
             cek,
             "00112233445566778899aabbccddeeff000102030405060708090a0b0c0d0e0f"
@@ -858,7 +859,7 @@
             + "yourself. But you cannot trust us to let you face trouble "
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
-        myKek = base64urlFromBuffer(randomBuffer(32));
+        myKek = bufferToBase64url(bufferRandom(32));
         myJwe = await jweEncrypt(myKek, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
