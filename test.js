@@ -215,7 +215,7 @@
     /*
      * this function will base64url-decode <str> to buf
      */
-        if (str && typeof str.byteLength === "number") {
+        if (typeof str !== "string") {
             return (
                 isBrowser
                 ? new Uint8Array(str)
@@ -230,14 +230,15 @@
         ), "/").replace((
             /\=*?$/
         ), "");
-        // env - browser
-        if (typeof globalThis.atob === "function") {
-            return Uint8Array.from(globalThis.atob(str), function (chr) {
+        return (
+            typeof globalThis.atob === "function"
+            // env - browser
+            ? Uint8Array.from(globalThis.atob(str), function (chr) {
                 return chr.charCodeAt(0);
-            });
-        }
-        // env - node
-        return Buffer.from(str, "base64");
+            })
+            // env - node
+            : Buffer.from(str, "base64")
+        );
     };
     bufferToBase64url = function (buf) {
     /*
@@ -334,15 +335,14 @@
         [
             header, cek, iv, ciphertext, tag
         ] = jwe.split(".").map(bufferFromBase64url);
-        header = JSON.parse(new TextDecoder().decode(header));
-        enc = jweEncDict[header.enc];
-        assertOrThrow(enc, "jwe validation failed");
         // validate header
         kek = bufferFromBase64url(kek);
-        jweValidateHeader(header, kek, cek, 8, iv);
+        enc = jweValidateHeader(JSON.parse(
+            new TextDecoder().decode(header)
+        ), kek, cek, 8, iv);
         // init aad
         header = new TextEncoder().encode(bufferToBase64url(
-            new TextEncoder().encode(JSON.stringify(header))
+            header
         ));
         // env - node
         if (!isBrowser) {
@@ -693,6 +693,9 @@
     /*
      * this function will validate jwe <header>
      */
+        let enc;
+        enc = jweEncDict[header && header.enc];
+        assertOrThrow(enc, "jwe validation failed");
         switch (header.alg + "." + kek.byteLength) {
         case "A128KW.16":
         case "A192KW.24":
@@ -701,11 +704,11 @@
         default:
             assertOrThrow(undefined, "jwe validation failed");
         }
-        header = jweEncDict[header.enc];
         assertOrThrow((
-            (cek.byteLength - cekPadding) === header.cekByteLength
-            && iv.byteLength === header.ivByteLength
+            (cek.byteLength - cekPadding) === enc.cekByteLength
+            && iv.byteLength === enc.ivByteLength
         ), "jwe validation failed");
+        return enc;
     };
     testCase_jweKeyWrap_default = function () {
     /*
