@@ -325,10 +325,13 @@
         jweValidateHeader(JSON.parse(new TextDecoder().decode(
             header
         )), kek, cek, 8);
+        // init aad
         header = new TextEncoder().encode(bufferToBase64url(header));
         // env - node
         if (!isBrowser) {
+            // key-unwrap cek
             cek = jweKeyUnwrap(kek, cek);
+            // decrypt ciphertext
             cipher = crypto.createDecipheriv((
                 cek.byteLength === 16
                 ? "aes-128-gcm"
@@ -348,6 +351,7 @@
             });
         }
         // env - browser
+        // key-unwrap cek
         return crypto.subtle.importKey("raw", kek, "AES-KW", false, [
             "unwrapKey"
         ]).then(function (data) {
@@ -357,6 +361,7 @@
             }, "AES-GCM", false, [
                 "decrypt"
             ]);
+        // decrypt ciphertext
         }).then(function (data) {
             cek = data;
             tmp = ciphertext;
@@ -380,30 +385,32 @@
         let cipher;
         let ciphertext;
         let tag;
+        // init var
         header = header || {
             "alg": "A256KW",
             "enc": "A256GCM"
         };
-        kek = bufferFromBase64url(kek);
         cek = bufferFromBase64url(cek || bufferToBase64url(bufferRandom(
             header.enc !== "A256GCM"
             ? 16
             : 32
         )));
-        // validate header
-        jweValidateHeader(header, kek, cek, 0);
-        header = bufferToBase64url(
-            new TextEncoder().encode(JSON.stringify(header))
-        );
-        header = new TextEncoder().encode(header);
         iv = (
             iv
             ? bufferFromBase64url(iv)
             : bufferRandom(12)
         );
+        kek = bufferFromBase64url(kek);
         plaintext = new TextEncoder().encode(plaintext);
+        // validate header
+        jweValidateHeader(header, kek, cek, 0);
+        // init aad
+        header = new TextEncoder().encode(bufferToBase64url(
+            new TextEncoder().encode(JSON.stringify(header))
+        ));
         // env - node
         if (!isBrowser) {
+            // encrypt plaintext
             cipher = crypto.createCipheriv((
                 cek.byteLength === 16
                 ? "aes-128-gcm"
@@ -417,8 +424,10 @@
             ];
             ciphertext.push(cipher.final());
             ciphertext = Buffer.concat(ciphertext);
+            // key-wrap cek
             cek = jweKeyWrap(kek, cek);
             tag = cipher.getAuthTag();
+            // return compact-form-jwe
             return Promise.resolve().then(function () {
                 return (
                     new TextDecoder().decode(header)
@@ -430,6 +439,7 @@
             });
         }
         // env - browser
+        // encrypt plaintext
         return crypto.subtle.importKey("raw", cek, {
             name: "AES-GCM"
         }, true, [
@@ -448,9 +458,11 @@
             return crypto.subtle.importKey("raw", kek, "AES-KW", false, [
                 "wrapKey"
             ]);
+        // key-wrap cek
         }).then(function (data) {
             kek = data;
             return crypto.subtle.wrapKey("raw", cek, kek, "AES-KW");
+        // return compact-form-jwe
         }).then(function (data) {
             cek = new Uint8Array(data);
             return (
