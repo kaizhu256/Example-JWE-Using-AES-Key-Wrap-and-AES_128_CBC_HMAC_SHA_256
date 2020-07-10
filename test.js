@@ -512,6 +512,8 @@
         let ii;
         let jj;
         let tag;
+        debugInline(cek);
+        cek = cek.slice(0, 16);
         // init tag
         tag = new Uint8Array(
             header.length + iv.length + ciphertext.length + 8
@@ -538,17 +540,26 @@
                 jj += 1;
             }
         });
+        // env - node
         if (!isBrowser) {
             // hmac
-            tag = crypto.createHmac(
-                enc.hmacNode,
-                cek.slice(0, 16)
-            ).update(tag).digest();
+            tag = crypto.createHmac(enc.hmacNode, cek).update(tag).digest();
             tag = tag.slice(0, tag.length >> 1);
             return Promise.resolve().then(function () {
                 return tag;
             });
         }
+        // env - browser
+        return crypto.subtle.importKey("raw", cek, {
+            hash: enc.hmac,
+            name: "HMAC"
+        }, false, [
+            "sign"
+        ]).then(function (data) {
+            tag = data;
+            tag = tag.slice(0, tag.length >> 1);
+            return tag;
+        });
     };
     jweKeyUnwrap = function (kek, cek) {
     /*
