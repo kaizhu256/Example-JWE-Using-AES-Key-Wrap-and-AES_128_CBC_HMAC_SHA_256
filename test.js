@@ -426,7 +426,7 @@
             // encrypt plaintext
             cipher = crypto.createCipheriv(enc.cipherNode, (
                 enc.hmac
-                ? cek.slice(cek.length >> 1)
+                ? cek.subarray(cek.length >> 1)
                 : cek
             ), iv);
             if (!enc.hmac) {
@@ -460,7 +460,7 @@
         // encrypt plaintext
         return crypto.subtle.importKey("raw", (
             enc.hmac
-            ? cek.slice(cek.length >> 1)
+            ? cek.subarray(cek.length >> 1)
             : cek
         ), {
             name: enc.cipher
@@ -504,7 +504,7 @@
     jweTag = function (enc, header, cek, iv, ciphertext) {
         let ii;
         let tag;
-        cek = cek.slice(0, 16);
+        cek = cek.subarray(0, 16);
         // init tag
         tag = new Uint8Array(
             header.length + iv.length + ciphertext.length + 8
@@ -528,8 +528,7 @@
         if (!isBrowser) {
             // hmac
             tag = crypto.createHmac(enc.hmacNode, cek).update(tag).digest();
-            tag = tag.slice(0, tag.length >> 1);
-            return tag;
+            return tag.subarray(0, tag.length >> 1);
         }
         // env - browser
         return crypto.subtle.importKey("raw", cek, {
@@ -543,7 +542,7 @@
             }, cek, tag);
         }).then(function (tag) {
             tag = new Uint8Array(tag);
-            return tag.slice(0, tag.length >> 1);
+            return tag.subarray(0, tag.length >> 1);
         });
     };
     jweKeyUnwrap = function (kek, cek) {
@@ -568,9 +567,9 @@
         // For i = 1 to n
         // R[i] = C[i]
         nn = (cek.length >> 3) - 1;
-        aa = Buffer.from(cek.slice(0, 16));
+        aa = Buffer.from(cek.subarray(0, 16));
         iv = Buffer.alloc(16);
-        rr = Buffer.from(cek.slice(8));
+        rr = Buffer.from(cek.subarray(8));
         // 2) Compute intermediate values.
         // For j = 5 to 0
         // For i = n to 1
