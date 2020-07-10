@@ -731,11 +731,10 @@
     };
     testCase_jweKeyWrap_default();
     testCase_jweEncrypt_default = async function () {
-        let jwe;
-        let plaintext;
+        let tmp;
         // https://tools.ietf.org/id/draft-ietf-jose-cookbook-02.html#rfc.section.4.8
         // 4.8. Key Wrap using AES-KeyWrap with AES-GCM
-        jwe = await jweEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
+        tmp = await jweEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
             + "keep any secret of yours\u2013closer than you keep it "
@@ -746,7 +745,7 @@
             "kid": "81b20965-8332-43d9-a468-82160ad91ac8",
             "enc": "A128GCM"
         }, "aY5_Ghmk9KxWPBLu_glx1w", "Qx0pmsDa8KnJc9Jo");
-        assertEqual(jwe, (
+        assertEqual(tmp, (
             // protectedHeader - Protected JWE header
             "eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC"
             + "04MjE2MGFkOTFhYzgiLCJlbmMiOiJBMTI4R0NNIn0"
@@ -768,8 +767,8 @@
             // tag - Authentication tag
             + "ER7MWJZ1FBI_NKvn7Zb1Lw"
         ));
-        plaintext = await jweDecrypt("GZy6sIZ6wl9NJOKB-jnmVQ", jwe);
-        assertEqual(plaintext, (
+        tmp = await jweDecrypt("GZy6sIZ6wl9NJOKB-jnmVQ", tmp);
+        assertEqual(tmp, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
             + "keep any secret of yours\u2013closer than you keep it "
@@ -797,7 +796,9 @@
                     let plaintext;
                     kek = bufferToBase64url(bufferRandom(alg >> 3));
                     jwe = await jweEncrypt(
-                        kek, plaintext0, {
+                        kek,
+                        plaintext0,
+                        {
                             alg: "A" + alg + "KW",
                             enc: "A" + enc + "GCM"
                         }
