@@ -416,8 +416,14 @@
         // env - node
         if (!isBrowser) {
             // encrypt plaintext
-            cipher = crypto.createCipheriv(enc.cipherNode, cek, iv);
-            cipher.setAAD(header);
+            cipher = crypto.createCipheriv(enc.cipherNode, (
+                enc.hmac
+                ? cek.slice(cek.byteLength > 1)
+                : cek
+            ), iv);
+            if (!enc.hmac) {
+                cipher.setAAD(header);
+            }
             ciphertext = [
                 cipher.update(plaintext)
             ];
@@ -446,10 +452,18 @@
         ]).then(function (data) {
             cek = data;
             return crypto.subtle.encrypt({
-                additionalData: header,
+                additionalData: (
+                    enc.hmac
+                    ? undefined
+                    : header
+                ),
                 iv,
                 name: enc.cipher
-            }, cek, plaintext);
+            }, (
+                enc.hmac
+                ? cek.slice(cek.byteLength > 1)
+                : cek
+            ), plaintext);
         }).then(function (data) {
             ciphertext = new Uint8Array(data);
             tag = ciphertext.subarray(-16);
@@ -672,6 +686,8 @@
             cekByteLength: 32,
             cipher: "AES-CBC",
             cipherNode: "aes-128-cbc",
+            hmac: "SHA-256",
+            hmacNode: "sha256",
             ivByteLength: 16,
             kekByteLength: 16
         },
@@ -679,6 +695,8 @@
             cekByteLength: 48,
             cipher: "AES-CBC",
             cipherNode: "aes-192-cbc",
+            hmac: "SHA-384",
+            hmacNode: "sha384",
             ivByteLength: 24,
             kekByteLength: 24
         },
@@ -686,6 +704,8 @@
             cekByteLength: 64,
             cipher: "AES-CBC",
             cipherNode: "aes-256-cbc",
+            hmac: "SHA-512",
+            hmacNode: "sha512",
             ivByteLength: 32,
             kekByteLength: 32
         },
