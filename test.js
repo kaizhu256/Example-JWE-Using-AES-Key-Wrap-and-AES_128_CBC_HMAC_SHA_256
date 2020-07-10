@@ -181,9 +181,9 @@
     let jweDecrypt;
     let jweEncDict;
     let jweEncrypt;
+    let jweHmac;
     let jweKeyUnwrap;
     let jweKeyWrap;
-    let jweTag;
     let jweValidateHeader;
     let testCase_jweEncrypt_default;
     let testCase_jweKeyWrap_default;
@@ -440,7 +440,7 @@
             // init tag
             tag = (
                 enc.hmac
-                ? jweTag(enc, header, cek, iv, ciphertext)
+                ? jweHmac(enc, header, cek, iv, ciphertext)
                 : cipher.getAuthTag()
             );
             // key-wrap cek
@@ -480,7 +480,7 @@
         }).then(function (data) {
             ciphertext = new Uint8Array(data);
             if (enc.hmac) {
-                return jweTag(enc, header, cek, iv, ciphertext);
+                return jweHmac(enc, header, cek, iv, ciphertext);
             }
             tag = ciphertext.subarray(-16);
             ciphertext = ciphertext.subarray(0, -16);
@@ -501,7 +501,11 @@
             );
         });
     };
-    jweTag = function (enc, header, cek, iv, ciphertext) {
+    jweHmac = function (enc, header, cek, iv, ciphertext) {
+    /*
+     * this function will hmac-sign <header> + <iv> + <ciphertext>
+     * with given <cek>
+     */
         let ii;
         let tag;
         cek = cek.subarray(0, cek.length >> 1);
