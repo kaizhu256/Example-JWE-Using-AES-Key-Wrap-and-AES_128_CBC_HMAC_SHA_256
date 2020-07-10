@@ -426,7 +426,7 @@
             // encrypt plaintext
             cipher = crypto.createCipheriv(enc.cipherNode, (
                 enc.hmac
-                ? cek.slice(cek.byteLength >> 1)
+                ? cek.slice(cek.length >> 1)
                 : cek
             ), iv);
             if (!enc.hmac) {
@@ -460,7 +460,7 @@
         // encrypt plaintext
         return crypto.subtle.importKey("raw", (
             enc.hmac
-            ? cek.slice(cek.byteLength >> 1)
+            ? cek.slice(cek.length >> 1)
             : cek
         ), {
             name: enc.cipher
@@ -503,35 +503,27 @@
     };
     jweTag = function (enc, header, cek, iv, ciphertext) {
         let ii;
-        let jj;
         let tag;
         cek = cek.slice(0, 16);
         // init tag
         tag = new Uint8Array(
             header.length + iv.length + ciphertext.length + 8
         );
-        // concat tag
         ii = 0;
-        [
-            header, iv, ciphertext, [
-                // 64-bit length of header
-                0,
-                0,
-                0,
-                0,
-                (header.length >>> 21) & 0xff,
-                (header.length >> 13) & 0xff,
-                (header.length >> 5) & 0xff,
-                (8 * header.length) & 0xff
-            ]
-        ].forEach(function (elem) {
-            jj = 0;
-            while (jj < elem.length) {
-                tag[ii] = elem[jj];
-                ii += 1;
-                jj += 1;
-            }
-        });
+        tag.set(header);
+        ii += header.length;
+        tag.set(iv, ii);
+        ii += iv.length;
+        tag.set(ciphertext, ii);
+        // 64-bit length of header
+        ii += ciphertext.length + 4;
+        tag[ii] = (header.length >> 21) & 0xff;
+        ii += 1;
+        tag[ii] = (header.length >> 13) & 0xff;
+        ii += 1;
+        tag[ii] = (header.length >> 5) & 0xff;
+        ii += 1;
+        tag[ii] = (8 * header.length) & 0xff;
         // env - node
         if (!isBrowser) {
             // hmac
@@ -545,10 +537,13 @@
             name: "HMAC"
         }, false, [
             "sign"
-        ]).then(function (data) {
-            tag = new Uint8Array(data);
-            tag = tag.slice(0, tag.length >> 1);
-            return tag;
+        ]).then(function (cek) {
+            return crypto.subtle.sign({
+                name: "HMAC"
+            }, cek, tag);
+        }).then(function (tag) {
+            tag = new Uint8Array(tag);
+            return tag.slice(0, tag.length >> 1);
         });
     };
     jweKeyUnwrap = function (kek, cek) {
@@ -572,7 +567,7 @@
         // Set A = C[0]
         // For i = 1 to n
         // R[i] = C[i]
-        nn = (cek.byteLength >> 3) - 1;
+        nn = (cek.length >> 3) - 1;
         aa = Buffer.from(cek.slice(0, 16));
         iv = Buffer.alloc(16);
         rr = Buffer.from(cek.slice(8));
@@ -600,16 +595,16 @@
                 aa[14] = rr[ii * 8 + 6];
                 aa[15] = rr[ii * 8 + 7];
                 bb = crypto.createDecipheriv((
-                    kek.byteLength === 16
+                    kek.length === 16
                     ? "aes-128-cbc"
-                    : kek.byteLength === 24
+                    : kek.length === 24
                     ? "aes-192-cbc"
                     : "aes-256-cbc"
                 ), kek, iv);
                 bb.setAutoPadding(false);
                 aa.set(bb.update(aa));
                 bb = bb.final();
-                aa.set(bb, 8 - bb.byteLength);
+                aa.set(bb, 8 - bb.length);
                 rr[ii * 8 + 0] = aa[8];
                 rr[ii * 8 + 1] = aa[9];
                 rr[ii * 8 + 2] = aa[10];
@@ -676,7 +671,7 @@
         // Set A = IV, an initial value (see 2.2.3)
         // For i = 1 to n
         // R[i] = P[i]
-        nn = cek.byteLength >> 3;
+        nn = cek.length >> 3;
         aa = Buffer.alloc(16, 0xa6);
         iv = Buffer.alloc(16);
         rr = Buffer.concat([
@@ -702,16 +697,16 @@
                 aa[14] = rr[ii * 8 + 6];
                 aa[15] = rr[ii * 8 + 7];
                 bb = crypto.createCipheriv((
-                    kek.byteLength === 16
+                    kek.length === 16
                     ? "aes-128-cbc"
-                    : kek.byteLength === 24
+                    : kek.length === 24
                     ? "aes-192-cbc"
                     : "aes-256-cbc"
                 ), kek, iv);
                 bb.setAutoPadding(false);
                 aa.set(bb.update(aa));
                 bb = bb.final();
-                aa.set(bb, 8 - bb.byteLength);
+                aa.set(bb, 8 - bb.length);
                 aa[4] ^= (tt >>> 24) & 0xff;
                 aa[5] ^= (tt >> 16) & 0xff;
                 aa[6] ^= (tt >> 8) & 0xff;
@@ -749,7 +744,7 @@
         let enc;
         enc = jweEncDict[header && header.enc];
         assertOrThrow(enc, "jwe validation failed");
-        switch (header.alg + "." + kek.byteLength) {
+        switch (header.alg + "." + kek.length) {
         case "A128KW.16":
         case "A192KW.24":
         case "A256KW.32":
@@ -758,8 +753,8 @@
             assertOrThrow(undefined, "jwe validation failed");
         }
         assertOrThrow((
-            (cek.byteLength - cekPadding) === enc.cekByteLength
-            && iv.byteLength === enc.ivByteLength
+            (cek.length - cekPadding) === enc.cekByteLength
+            && iv.length === enc.ivByteLength
         ), "jwe validation failed");
         return enc;
     };
@@ -888,14 +883,13 @@
             206, 107, 124, 212, 45, 111, 107, 9, 219, 200, 177, 0, 240, 143,
             156, 44, 207
         ], "AxY8DCtDaGlsbGljb3RoZQ");
-        debugInline(tmp.split("."));
-        //!! assertEqual(tmp, (
-            //!! "eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0."
-            //!! + "6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ."
-            //!! + "AxY8DCtDaGlsbGljb3RoZQ."
-            //!! + "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY."
-            //!! + "U0m_YmjN04DJvceFICbCVQ"
-        //!! ));
+        assertEqual(tmp, (
+            "eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0."
+            + "6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ."
+            + "AxY8DCtDaGlsbGljb3RoZQ."
+            + "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY."
+            + "U0m_YmjN04DJvceFICbCVQ"
+        ));
         //!! tmp = await jweDecrypt("GawgguFyGrWKav7AX4VKUg", tmp);
         //!! assertEqual(tmp, "Live long and prosper.");
         // https://tools.ietf.org/id/draft-ietf-jose-cookbook-02.html#rfc.section.4.8
