@@ -185,6 +185,7 @@
     let jweKeyUnwrap;
     let jweKeyWrap;
     let jweValidateHeader;
+    let jweValidationFailed;
     let testCase_jweEncrypt_default;
     let testCase_jweKeyWrap_default;
     crypto = globalThis.crypto;
@@ -330,7 +331,7 @@
         // init var
         assertOrThrow((
             /^[\w\-]+?\.[\w\-]+?\.[\w\-]+?\.[\w\-]*?\.[\w\-]+?$/
-        ).test(jwe), "jwe validation failed");
+        ).test(jwe), jweValidationFailed);
         [
             header, cek, iv, ciphertext, tag
         ] = jwe.split(".").map(bufferFromBase64url);
@@ -341,7 +342,7 @@
                 new TextDecoder().decode(header)
             ), kek, cek, 8, iv);
         } catch (ignore) {
-            assertOrThrow(undefined, "jwe validation failed");
+            assertOrThrow(undefined, jweValidationFailed);
         }
         // init aad
         header = new TextEncoder().encode(bufferToBase64url(
@@ -355,7 +356,7 @@
             if (enc.hmac) {
                 assertOrThrow(bufferToBase64url(
                     jweHmac(enc, header, cek, iv, ciphertext)
-                ) === bufferToBase64url(tag), "jwe validation failed");
+                ) === bufferToBase64url(tag), jweValidationFailed);
             }
             // decrypt ciphertext
             cipher = crypto.createDecipheriv(enc.cipherNode, (
@@ -378,29 +379,40 @@
         }
         // env - browser
         // key-unwrap cek
-        return crypto.subtle.importKey("raw", kek, "AES-KW", false, [
-            "unwrapKey"
-        ]).then(function (data) {
-            kek = data;
-            return crypto.subtle.unwrapKey("raw", cek, kek, {
-                name: "AES-KW"
-            }, enc.cipher, false, [
+        return jweKeyUnwrap(kek, cek).then(function (data) {
+            cek = data;
+            // validate hmac
+            if (enc.hmac) {
+                return jweHmac(enc, header, cek, iv, ciphertext).then(function (
+                    data
+                ) {
+                    assertOrThrow(
+                        bufferToBase64url(data) === bufferToBase64url(tag),
+                        jweValidationFailed
+                    );
+                });
+            }
+            tmp = ciphertext;
+            ciphertext = new Uint8Array(tmp.length + 16);
+            ciphertext.set(tmp);
+            ciphertext.set(tag, tmp.length);
+        // decrypt ciphertext
+        }).then(function () {
+            return crypto.subtle.importKey("raw", (
+                enc.hmac
+                ? cek.subarray(cek.length >> 1)
+                : cek
+            ), {
+                name: enc.cipher
+            }, true, [
                 "decrypt"
             ]);
-        // decrypt ciphertext
         }).then(function (data) {
-            cek = data;
-            if (!enc.hmac) {
-                tmp = ciphertext;
-                ciphertext = new Uint8Array(tmp.length + 16);
-                ciphertext.set(tmp);
-                ciphertext.set(tag, tmp.length);
-            }
             return crypto.subtle.decrypt({
                 additionalData: header,
                 iv,
                 name: enc.cipher
-            }, cek, ciphertext);
+            }, data, ciphertext);
         }).then(function (data) {
             return new TextDecoder().decode(data);
         });
@@ -420,7 +432,7 @@
             enc: "A256GCM"
         };
         enc = jweEncDict[header.enc];
-        assertOrThrow(enc, "jwe validation failed");
+        assertOrThrow(enc, jweValidationFailed);
         cek = bufferFromBase64url(cek || bufferRandom(enc.cekByteLength));
         iv = bufferFromBase64url(iv || bufferRandom(enc.ivByteLength));
         kek = bufferFromBase64url(kek);
@@ -572,6 +584,23 @@
         let nn;
         let rr;
         let tt;
+        // env - browser
+        if (isBrowser) {
+            return crypto.subtle.importKey("raw", kek, "AES-KW", false, [
+                "unwrapKey"
+            ]).then(function (kek) {
+                return crypto.subtle.unwrapKey("raw", cek, kek, {
+                    name: "AES-KW"
+                }, "AES-CBC", true, [
+                    "decrypt"
+                ]);
+            }).then(function (cek) {
+                return crypto.subtle.exportKey("raw", cek);
+            }).then(function (cek) {
+                return new Uint8Array(cek);
+            });
+        }
+        // env - node
         // 2.2.2 Key Unwrap
         // Inputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}, and
         // Key, K (the KEK).
@@ -756,19 +785,19 @@
      */
         let enc;
         enc = jweEncDict[header && header.enc];
-        assertOrThrow(enc, "jwe validation failed");
+        assertOrThrow(enc, jweValidationFailed);
         switch (header.alg + "." + kek.length) {
         case "A128KW.16":
         case "A192KW.24":
         case "A256KW.32":
             break;
         default:
-            assertOrThrow(undefined, "jwe validation failed");
+            assertOrThrow(undefined, jweValidationFailed);
         }
         assertOrThrow((
             (cek.length - cekPadding) === enc.cekByteLength
             && iv.length === enc.ivByteLength
-        ), "jwe validation failed");
+        ), jweValidationFailed);
         return enc;
     };
     jweEncDict = {
@@ -821,6 +850,7 @@
             kekByteLength: 32
         }
     };
+    jweValidationFailed = "jwe validation failed";
     testCase_jweKeyWrap_default = function () {
     /*
      * this function will test jweKeyWrap's default handling-behavior
