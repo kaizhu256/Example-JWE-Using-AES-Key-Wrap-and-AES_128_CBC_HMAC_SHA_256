@@ -363,7 +363,6 @@
      * this function will A256KW+A256GCM-encrypt <plaintext> with given <kek>
      * to jwe
      */
-        let aad;
         let cipher;
         let ciphertext;
         let tag;
@@ -384,19 +383,25 @@
         header = base64urlFromBuffer(
             new TextEncoder().encode(JSON.stringify(header))
         );
-        aad = new TextEncoder().encode(header);
+        header = new TextEncoder().encode(header);
+        iv = (
+            iv
+            ? base64urlToBuffer(iv)
+            : isBrowser
+            ? crypto.getRandomValues(new Uint8Array(12))
+            : crypto.randomBytes(12)
+        );
         plaintext = new TextEncoder().encode(plaintext);
         // env - node
         if (!isBrowser) {
-            iv = iv || base64urlFromBuffer(crypto.randomBytes(12));
             cipher = crypto.createCipheriv((
                 cek.byteLength === 16
                 ? "aes-128-gcm"
                 : cek.byteLength === 24
                 ? "aes-192-gcm"
                 : "aes-256-gcm"
-            ), cek, base64urlToBuffer(iv));
-            cipher.setAAD(aad);
+            ), cek, iv);
+            cipher.setAAD(header);
             ciphertext = [
                 cipher.update(plaintext)
             ];
@@ -406,18 +411,15 @@
             tag = cipher.getAuthTag();
             return Promise.resolve().then(function () {
                 return (
-                    header
+                    new TextDecoder().decode(header)
                     + "." + base64urlFromBuffer(cek)
-                    + "." + iv
+                    + "." + base64urlFromBuffer(iv)
                     + "." + base64urlFromBuffer(ciphertext)
                     + "." + base64urlFromBuffer(tag)
                 );
             });
         }
         // env - browser
-        iv = iv || base64urlFromBuffer(
-            crypto.getRandomValues(new Uint8Array(12))
-        );
         return crypto.subtle.importKey("raw", cek, {
             name: "AES-GCM"
         }, true, [
@@ -425,8 +427,8 @@
         ]).then(function (data) {
             cek = data;
             return crypto.subtle.encrypt({
-                additionalData: aad,
-                iv: base64urlToBuffer(iv),
+                additionalData: header,
+                iv,
                 name: "AES-GCM"
             }, cek, plaintext);
         }).then(function (data) {
@@ -442,9 +444,9 @@
         }).then(function (data) {
             cek = new Uint8Array(data);
             return (
-                header
+                new TextDecoder().decode(header)
                 + "." + base64urlFromBuffer(cek)
-                + "." + iv
+                + "." + base64urlFromBuffer(iv)
                 + "." + base64urlFromBuffer(ciphertext)
                 + "." + base64urlFromBuffer(tag)
             );
