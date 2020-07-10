@@ -437,14 +437,14 @@
             ];
             ciphertext.push(cipher.final());
             ciphertext = Buffer.concat(ciphertext);
-            // key-wrap cek
-            cek = jweKeyWrap(kek, cek);
             // init tag
             tag = (
                 enc.hmac
-                ? jweTag(cek, header, iv, ciphertext, enc)
+                ? jweTag(enc, header, cek, iv, ciphertext)
                 : cipher.getAuthTag()
             );
+            // key-wrap cek
+            cek = jweKeyWrap(kek, cek);
             return Promise.resolve().then(function () {
                 // return compact-form-jwe
                 return (
@@ -480,7 +480,7 @@
         }).then(function (data) {
             ciphertext = new Uint8Array(data);
             if (enc.hmac) {
-                return jweTag(cek, header, iv, ciphertext, enc);
+                return jweTag(enc, header, cek, iv, ciphertext);
             }
             tag = ciphertext.subarray(-16);
             ciphertext = ciphertext.subarray(0, -16);
@@ -501,7 +501,7 @@
             );
         });
     };
-    jweTag = function (cek, header, iv, ciphertext, enc) {
+    jweTag = function (enc, header, cek, iv, ciphertext) {
         let ii;
         let jj;
         let tag;
@@ -650,6 +650,7 @@
         let nn;
         let rr;
         let tt;
+        // env - browser
         if (isBrowser) {
             return Promise.all([
                 crypto.subtle.importKey("raw", kek, "AES-KW", false, [
@@ -666,6 +667,7 @@
                 return crypto.subtle.wrapKey("raw", cek, kek, "AES-KW");
             });
         }
+        // env - node
         // 2.2.1 Key Wrap
         // Inputs: Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
         // Key, K (the KEK).
