@@ -993,10 +993,11 @@
                     let kek;
                     let plaintext;
                     // bug-workaround - chrome does not support 192bit
-                    if (
-                        isBrowser
-                        && (alg.indexOf("192") >= 0 || enc.indexOf("192") >= 0)
-                    ) {
+                    if (isBrowser && (
+                        alg.indexOf("192") >= 0
+                        || enc.indexOf("192") >= 0
+                        || enc.indexOf("512") >= 0
+                    )) {
                         return;
                     }
                     kek = bufferRandom(alg.slice(1, 4) >> 3);
