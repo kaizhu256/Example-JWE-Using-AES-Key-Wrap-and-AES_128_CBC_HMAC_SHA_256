@@ -351,12 +351,22 @@
         if (!isBrowser) {
             // key-unwrap cek
             cek = jweKeyUnwrap(kek, cek);
+            // validate hmac
+            if (enc.hmac) {
+                assertOrThrow(bufferToBase64url(
+                    jweHmac(enc, header, cek, iv, ciphertext)
+                ) === bufferToBase64url(tag), "jwe validation failed");
+            }
             // decrypt ciphertext
-            cipher = crypto.createDecipheriv(enc.cipherNode, cek, iv);
+            cipher = crypto.createDecipheriv(enc.cipherNode, (
+                enc.hmac
+                ? cek.subarray(cek.length >> 1)
+                : cek
+            ), iv);
             if (!enc.hmac) {
+                cipher.setAAD(header);
                 cipher.setAuthTag(tag);
             }
-            cipher.setAAD(header);
             tmp = [
                 cipher.update(Buffer.from(ciphertext))
             ];
@@ -893,8 +903,8 @@
             + "KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY."
             + "U0m_YmjN04DJvceFICbCVQ"
         ));
-        //!! tmp = await jweDecrypt("GawgguFyGrWKav7AX4VKUg", tmp);
-        //!! assertEqual(tmp, "Live long and prosper.");
+        tmp = await jweDecrypt("GawgguFyGrWKav7AX4VKUg", tmp);
+        assertEqual(tmp, "Live long and prosper.");
         // https://tools.ietf.org/id/draft-ietf-jose-cookbook-02.html#rfc.section.4.8
         // 4.8. Key Wrap using AES-KeyWrap with AES-GCM
         tmp = await jweEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
