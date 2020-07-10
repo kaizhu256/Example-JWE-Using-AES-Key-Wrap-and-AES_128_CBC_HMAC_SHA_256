@@ -296,23 +296,18 @@
         }
         return str;
     };
-    bufferRandom = function (nn, mode) {
+    bufferRandom = function (nn) {
     /*
      * this function will generate cryptographically-secure-random buf
      * with byteLength <nn>
      */
-        nn = (
+        return (
             (
                 globalThis.crypto
                 && typeof globalThis.crypto.getRandomValues === "function"
             )
             ? globalThis.crypto.getRandomValues(new Uint8Array(nn))
             : require("crypto").randomBytes(nn)
-        );
-        return (
-            mode === "base64url"
-            ? bufferToBase64url(nn)
-            : nn
         );
     };
     jweDecrypt = function (kek, jwe) {
@@ -552,14 +547,16 @@
         // 3) Output results.
         // For i = 1 to n
         // P[i] = R[i]
-        assertOrThrow(aa[0] === 0xa6, "key-unwrap failed");
-        assertOrThrow(aa[1] === 0xa6, "key-unwrap failed");
-        assertOrThrow(aa[2] === 0xa6, "key-unwrap failed");
-        assertOrThrow(aa[3] === 0xa6, "key-unwrap failed");
-        assertOrThrow(aa[4] === 0xa6, "key-unwrap failed");
-        assertOrThrow(aa[5] === 0xa6, "key-unwrap failed");
-        assertOrThrow(aa[6] === 0xa6, "key-unwrap failed");
-        assertOrThrow(aa[7] === 0xa6, "key-unwrap failed");
+        assertOrThrow((
+            aa[0] === 0xa6
+            && aa[1] === 0xa6
+            && aa[2] === 0xa6
+            && aa[3] === 0xa6
+            && aa[4] === 0xa6
+            && aa[5] === 0xa6
+            && aa[6] === 0xa6
+            && aa[7] === 0xa6
+        ), "key-unwrap failed");
         return rr;
     };
     jweKeyWrap = function (kek, cek) {
@@ -843,7 +840,7 @@
                     if (isBrowser && (alg === 192 || enc === 192)) {
                         return;
                     }
-                    kek = bufferRandom(alg >> 3, "base64url");
+                    kek = bufferRandom(alg >> 3);
                     jwe = await jweEncrypt(kek, plaintext0, {
                         alg: "A" + alg + "KW",
                         enc: "A" + enc + "GCM"
