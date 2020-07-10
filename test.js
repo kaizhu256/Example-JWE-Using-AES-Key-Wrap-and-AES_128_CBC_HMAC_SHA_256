@@ -180,8 +180,8 @@
     let isBrowser;
     let jweDecrypt;
     let jweEncrypt;
-    let jweKeyUnwrapNode;
-    let jweKeyWrapNode;
+    let jweKeyUnwrap;
+    let jweKeyWrap;
     let jweValidateHeader;
     let runMe;
     crypto = globalThis.crypto;
@@ -315,7 +315,7 @@
         // validate jwe
         assertOrThrow((
             /^[\w\-]+?\.[\w\-]+?\.[\w\-]+?\.[\w\-]*?\.[\w\-]+?$/
-        ).test(jwe), "jwe failed validation");
+        ).test(jwe), "jwe validation failed");
         // init var
         [
             header, cek, iv, ciphertext, tag
@@ -328,7 +328,7 @@
         header = new TextEncoder().encode(bufferToBase64url(header));
         // env - node
         if (!isBrowser) {
-            cek = jweKeyUnwrapNode(kek, cek);
+            cek = jweKeyUnwrap(kek, cek);
             cipher = crypto.createDecipheriv((
                 cek.byteLength === 16
                 ? "aes-128-gcm"
@@ -417,7 +417,7 @@
             ];
             ciphertext.push(cipher.final());
             ciphertext = Buffer.concat(ciphertext);
-            cek = jweKeyWrapNode(kek, cek);
+            cek = jweKeyWrap(kek, cek);
             tag = cipher.getAuthTag();
             return Promise.resolve().then(function () {
                 return (
@@ -462,7 +462,7 @@
             );
         });
     };
-    jweKeyUnwrapNode = function (kek, cek) {
+    jweKeyUnwrap = function (kek, cek) {
     /*
      * this function will A256KW-key-unwrap <cek> with given <kek>
      * https://tools.ietf.org/html/rfc3394#section-2.2.2
@@ -546,7 +546,7 @@
         assertOrThrow(aa[7] === 0xa6, "key-unwrap failed");
         return rr;
     };
-    jweKeyWrapNode = function (kek, cek) {
+    jweKeyWrap = function (kek, cek) {
     /*
      * this function will A256KW-key-wrap <cek> with given <kek>
      * https://tools.ietf.org/html/rfc3394#section-2.2.1
@@ -637,20 +637,22 @@
     /*
      * this function will validate jwe <header>
      */
-        assertOrThrow((
-            (header.alg === "A128KW" && header.enc === "A128GCM")
-            || (header.alg === "A256KW" && header.enc === "A256GCM")
-        ), "jwe failed validation");
-        assertOrThrow(kek.byteLength === (
-            header.alg !== "A256KW"
-            ? 16
-            : 32
-        ), "jwe failed validation");
-        assertOrThrow((cek.byteLength - cekPadding) === (
-            header.enc !== "A256GCM"
-            ? 16
-            : 32
-        ), "jwe failed validation");
+        switch (header.alg + "." + (kek.byteLength * 8)) {
+        case "A128KW.128":
+        case "A192KW.192":
+        case "A256KW.256":
+            break;
+        default:
+            throw new Error("jwe validation failed for alg AxxxKW");
+        }
+        switch (header.enc + "." + ((cek.byteLength - cekPadding) * 8)) {
+        case "A128GCM.128":
+        case "A192GCM.192":
+        case "A256GCM.256":
+            break;
+        default:
+            throw new Error("jwe validation failed for enc AxxxGCM");
+        }
     };
     runMe = async function () {
         if (!isBrowser) {
@@ -759,35 +761,35 @@
         // 4.1 Wrap 128 bits of Key Data with a 128-bit KEK
         cek = bufferFromHex("00112233445566778899aabbccddeeff");
         kek = bufferFromHex("000102030405060708090a0b0c0d0e0f");
-        tmp = bufferToHex(jweKeyWrapNode(kek, cek));
+        tmp = bufferToHex(jweKeyWrap(kek, cek));
         assertEqual(tmp, "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5");
         console.log("wrapped-key - " + tmp);
-        cek = bufferToHex(jweKeyUnwrapNode(kek, bufferFromHex(tmp)));
+        cek = bufferToHex(jweKeyUnwrap(kek, bufferFromHex(tmp)));
         assertEqual(cek, "00112233445566778899aabbccddeeff");
         // 4.2 Wrap 128 bits of Key Data with a 192-bit KEK
         cek = bufferFromHex("00112233445566778899aabbccddeeff");
         kek = bufferFromHex("000102030405060708090a0b0c0d0e0f1011121314151617");
-        tmp = bufferToHex(jweKeyWrapNode(kek, cek));
+        tmp = bufferToHex(jweKeyWrap(kek, cek));
         assertEqual(tmp, "96778b25ae6ca435f92b5b97c050aed2468ab8a17ad84e5d");
-        cek = bufferToHex(jweKeyUnwrapNode(kek, bufferFromHex(tmp)));
+        cek = bufferToHex(jweKeyUnwrap(kek, bufferFromHex(tmp)));
         assertEqual(cek, "00112233445566778899aabbccddeeff");
         // 4.3 Wrap 128 bits of Key Data with a 256-bit KEK
         cek = bufferFromHex("00112233445566778899aabbccddeeff");
         kek = bufferFromHex(
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
         );
-        tmp = bufferToHex(jweKeyWrapNode(kek, cek));
+        tmp = bufferToHex(jweKeyWrap(kek, cek));
         assertEqual(tmp, "64e8c3f9ce0f5ba263e9777905818a2a93c8191e7d6e8ae7");
-        cek = bufferToHex(jweKeyUnwrapNode(kek, bufferFromHex(tmp)));
+        cek = bufferToHex(jweKeyUnwrap(kek, bufferFromHex(tmp)));
         assertEqual(cek, "00112233445566778899aabbccddeeff");
         // 4.4 Wrap 192 bits of Key Data with a 192-bit KEK
         cek = bufferFromHex("00112233445566778899aabbccddeeff0001020304050607");
         kek = bufferFromHex("000102030405060708090a0b0c0d0e0f1011121314151617");
-        tmp = bufferToHex(jweKeyWrapNode(kek, cek));
+        tmp = bufferToHex(jweKeyWrap(kek, cek));
         assertEqual(tmp, (
             "031d33264e15d33268f24ec260743edce1c6c7ddee725a936ba814915c6762d2"
         ));
-        cek = bufferToHex(jweKeyUnwrapNode(kek, bufferFromHex(tmp)));
+        cek = bufferToHex(jweKeyUnwrap(kek, bufferFromHex(tmp)));
         assertEqual(cek, "00112233445566778899aabbccddeeff0001020304050607");
         // 4.5 Wrap 192 bits of Key Data with a 256-bit KEK
         cek = bufferFromHex(
@@ -796,12 +798,12 @@
         kek = bufferFromHex(
             "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
         );
-        tmp = bufferToHex(jweKeyWrapNode(kek, cek));
+        tmp = bufferToHex(jweKeyWrap(kek, cek));
         assertEqual(tmp, (
             "28c9f404c4b810f4cbccb35cfb87f8263f5786e2d80ed326"
             + "cbc7f0e71a99f43bfb988b9b7a02dd21"
         ));
-        cek = bufferToHex(jweKeyUnwrapNode(kek, bufferFromHex(tmp)));
+        cek = bufferToHex(jweKeyUnwrap(kek, bufferFromHex(tmp)));
         assertEqual(
             cek,
             "00112233445566778899aabbccddeeff000102030405060708090a0b0c0d0e0f"
