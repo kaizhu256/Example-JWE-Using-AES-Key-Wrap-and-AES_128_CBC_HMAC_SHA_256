@@ -337,8 +337,8 @@
         header = JSON.parse(new TextDecoder().decode(header));
         enc = jweEncDict[header.enc];
         assertOrThrow(enc, "jwe validation failed");
-        kek = bufferFromBase64url(kek);
         // validate header
+        kek = bufferFromBase64url(kek);
         jweValidateHeader(header, kek, cek, 8, iv);
         // init aad
         header = new TextEncoder().encode(bufferToBase64url(
@@ -393,37 +393,43 @@
             cekByteLength: 32,
             cipher: "AES-CBC",
             cipherNode: "aes-128-cbc",
-            ivByteLength: 16
+            ivByteLength: 16,
+            kekByteLength: 16
         },
         "A192CBC-HS384": {
             cekByteLength: 48,
             cipher: "AES-CBC",
             cipherNode: "aes-192-cbc",
-            ivByteLength: 24
+            ivByteLength: 24,
+            kekByteLength: 24
         },
         "A256CBC-HS512": {
             cekByteLength: 64,
             cipher: "AES-CBC",
             cipherNode: "aes-256-cbc",
-            ivByteLength: 32
+            ivByteLength: 32,
+            kekByteLength: 32
         },
         "A128GCM": {
             cekByteLength: 16,
             cipher: "AES-GCM",
             cipherNode: "aes-128-gcm",
-            ivByteLength: 12
+            ivByteLength: 12,
+            kekByteLength: 16
         },
         "A192GCM": {
             cekByteLength: 24,
             cipher: "AES-GCM",
             cipherNode: "aes-192-gcm",
-            ivByteLength: 12
+            ivByteLength: 12,
+            kekByteLength: 24
         },
         "A256GCM": {
             cekByteLength: 32,
             cipher: "AES-GCM",
             cipherNode: "aes-256-gcm",
-            ivByteLength: 12
+            ivByteLength: 12,
+            kekByteLength: 32
         }
     };
     jweEncrypt = function (kek, plaintext, header, cek, iv) {
@@ -687,29 +693,19 @@
     /*
      * this function will validate jwe <header>
      */
-        let test;
         switch (header.alg + "." + kek.byteLength) {
         case "A128KW.16":
         case "A192KW.24":
         case "A256KW.32":
             break;
         default:
-            assertOrThrow(test, "jwe validation failed");
+            assertOrThrow(undefined, "jwe validation failed");
         }
-        switch (header.enc + "." + (cek.byteLength - cekPadding)) {
-        case "A128CBC-HS256.32":
-            test = iv.byteLength === 16;
-            assertOrThrow(test, "jwe validation failed");
-            break;
-        case "A128GCM.16":
-        case "A192GCM.24":
-        case "A256GCM.32":
-            test = iv.byteLength === 12;
-            assertOrThrow(test, "jwe validation failed");
-            break;
-        default:
-            assertOrThrow(test, "jwe validation failed");
-        }
+        header = jweEncDict[header.enc];
+        assertOrThrow((
+            (cek.byteLength - cekPadding) === header.cekByteLength
+            && iv.byteLength === header.ivByteLength
+        ), "jwe validation failed");
     };
     testCase_jweKeyWrap_default = function () {
     /*
