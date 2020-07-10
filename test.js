@@ -182,6 +182,7 @@
     let jweKeyUnwrapNode;
     let jweKeyWrapNode;
     let jweValidateHeader;
+    let randomBytes;
     let runMe;
     crypto = globalThis.crypto;
     if (
@@ -285,6 +286,19 @@
         }
         return buf;
     };
+    randomBytes = function (nn) {
+    /*
+     * this function will return random-bytes with length <nn>
+     */
+        return (
+            (
+                globalThis.crypto
+                && typeof globalThis.crypto.getRandomValues === "function"
+            )
+            ? globalThis.crypto.getRandomValues(new Uint8Array(nn))
+            : require("crypto").randomBytes(nn)
+        );
+    };
     jweDecrypt = function (kek, jwe) {
     /*
      * this function will A256KW+A256GCM-decrypt <jwe> with given <kek>
@@ -311,14 +325,9 @@
             header
         )), kek, cek, 8);
         header = new TextEncoder().encode(base64urlFromBuffer(header));
-        tmp = ciphertext;
-        ciphertext = new Uint8Array(tmp.length + 16);
-        ciphertext.set(tmp);
-        ciphertext.set(tag, tmp.length);
         // env - node
         if (!isBrowser) {
             cek = jweKeyUnwrapNode(kek, cek);
-            debugInline(cek.length, base64urlFromBuffer(cek));
             cipher = crypto.createDecipheriv((
                 cek.byteLength === 16
                 ? "aes-128-gcm"
@@ -331,7 +340,7 @@
             tmp = [
                 cipher.update(Buffer.from(ciphertext))
             ];
-            //!! tmp.push(cipher.final());
+            tmp.push(cipher.final());
             tmp = Buffer.concat(tmp).toString();
             return Promise.resolve().then(function () {
                 return tmp;
@@ -349,6 +358,10 @@
             ]);
         }).then(function (data) {
             cek = data;
+            tmp = ciphertext;
+            ciphertext = new Uint8Array(tmp.length + 16);
+            ciphertext.set(tmp);
+            ciphertext.set(tag, tmp.length);
             return crypto.subtle.decrypt({
                 additionalData: header,
                 iv,
@@ -371,13 +384,11 @@
             "enc": "A256GCM"
         };
         kek = base64urlToBuffer(kek);
-        cek = base64urlToBuffer(cek || base64urlFromBuffer(
-            crypto.getRandomValues(new Uint8Array(
-                header.enc !== "A256GCM"
-                ? 16
-                : 32
-            ))
-        ));
+        cek = base64urlToBuffer(cek || base64urlFromBuffer(randomBytes(
+            header.enc !== "A256GCM"
+            ? 16
+            : 32
+        )));
         // validate header
         jweValidateHeader(header, kek, cek, 0);
         header = base64urlFromBuffer(
@@ -387,9 +398,7 @@
         iv = (
             iv
             ? base64urlToBuffer(iv)
-            : isBrowser
-            ? crypto.getRandomValues(new Uint8Array(12))
-            : crypto.randomBytes(12)
+            : randomBytes(12)
         );
         plaintext = new TextEncoder().encode(plaintext);
         // env - node
@@ -718,9 +727,7 @@
             + "yourself. But you cannot trust us to let you face trouble "
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
-        myKek = base64urlFromBuffer(crypto.getRandomValues(
-            new Uint8Array(32)
-        ));
+        myKek = base64urlFromBuffer(randomBytes(32));
         myJwe = await jweEncrypt(myKek, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
@@ -844,34 +851,32 @@
             myJwe
         );
         console.log("decrypted jwe - " + myPlaintext);
-        //!! assertEqual(myPlaintext, (
-            //!! "You can trust us to stick with you through thick and "
-            //!! + "thin\u2013to the bitter end. And you can trust us to "
-            //!! + "keep any secret of yours\u2013closer than you keep it "
-            //!! + "yourself. But you cannot trust us to let you face trouble "
-            //!! + "alone, and go off without a word. We are your friends, Frodo."
-        //!! ));
-        //!! myKek = base64urlFromBuffer(crypto.getRandomValues(
-            //!! new Uint8Array(32)
-        //!! ));
-        //!! myJwe = await jweEncrypt(myKek, (
-            //!! "You can trust us to stick with you through thick and "
-            //!! + "thin\u2013to the bitter end. And you can trust us to "
-            //!! + "keep any secret of yours\u2013closer than you keep it "
-            //!! + "yourself. But you cannot trust us to let you face trouble "
-            //!! + "alone, and go off without a word. We are your friends, Frodo."
-        //!! ));
-        //!! myPlaintext = await jweDecrypt(myKek, myJwe);
-        //!! assertEqual(myPlaintext, (
-            //!! "You can trust us to stick with you through thick and "
-            //!! + "thin\u2013to the bitter end. And you can trust us to "
-            //!! + "keep any secret of yours\u2013closer than you keep it "
-            //!! + "yourself. But you cannot trust us to let you face trouble "
-            //!! + "alone, and go off without a word. We are your friends, Frodo."
-        //!! ));
-        //!! myJwe = await jweEncrypt(myKek, "");
-        //!! myPlaintext = await jweDecrypt(myKek, myJwe);
-        //!! assertEqual(myPlaintext, "");
+        assertEqual(myPlaintext, (
+            "You can trust us to stick with you through thick and "
+            + "thin\u2013to the bitter end. And you can trust us to "
+            + "keep any secret of yours\u2013closer than you keep it "
+            + "yourself. But you cannot trust us to let you face trouble "
+            + "alone, and go off without a word. We are your friends, Frodo."
+        ));
+        myKek = base64urlFromBuffer(randomBytes(32));
+        myJwe = await jweEncrypt(myKek, (
+            "You can trust us to stick with you through thick and "
+            + "thin\u2013to the bitter end. And you can trust us to "
+            + "keep any secret of yours\u2013closer than you keep it "
+            + "yourself. But you cannot trust us to let you face trouble "
+            + "alone, and go off without a word. We are your friends, Frodo."
+        ));
+        myPlaintext = await jweDecrypt(myKek, myJwe);
+        assertEqual(myPlaintext, (
+            "You can trust us to stick with you through thick and "
+            + "thin\u2013to the bitter end. And you can trust us to "
+            + "keep any secret of yours\u2013closer than you keep it "
+            + "yourself. But you cannot trust us to let you face trouble "
+            + "alone, and go off without a word. We are your friends, Frodo."
+        ));
+        myJwe = await jweEncrypt(myKek, "");
+        myPlaintext = await jweDecrypt(myKek, myJwe);
+        assertEqual(myPlaintext, "");
     };
     await runMe();
 }());
