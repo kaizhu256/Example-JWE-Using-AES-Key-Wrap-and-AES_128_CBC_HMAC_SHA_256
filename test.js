@@ -181,9 +181,9 @@
     let jweDecrypt;
     let jweEncDict;
     let jweEncrypt;
-    let jweHmac;
     let jweKeyUnwrap;
     let jweKeyWrap;
+    let jweTag;
     let jweValidateHeader;
     let testCase_jweEncrypt_default;
     let testCase_jweKeyWrap_default;
@@ -440,7 +440,7 @@
             // init tag
             return Promise.resolve().then(function () {
                 if (enc.hmac) {
-                    return jweHmac(cek, header, iv, ciphertext, enc);
+                    return jweTag(cek, header, iv, ciphertext, enc);
                 }
                 return cipher.getAuthTag();
             }).then(function (data) {
@@ -481,7 +481,7 @@
         }).then(function (data) {
             ciphertext = new Uint8Array(data);
             if (enc.hmac) {
-                return jweHmac(cek, header, iv, ciphertext, enc);
+                return jweTag(cek, header, iv, ciphertext, enc);
             }
             tag = ciphertext.subarray(-16);
             ciphertext = ciphertext.subarray(0, -16);
@@ -489,19 +489,7 @@
         // key-wrap cek
         }).then(function (data) {
             tag = data;
-            return crypto.subtle.importKey("raw", cek, {
-                name: enc.cipher
-            }, true, [
-                "encrypt"
-            ]);
-        }).then(function (data) {
-            cek = data;
-            return crypto.subtle.importKey("raw", kek, "AES-KW", false, [
-                "wrapKey"
-            ]);
-        }).then(function (data) {
-            kek = data;
-            return crypto.subtle.wrapKey("raw", cek, kek, "AES-KW");
+            return jweKeyWrap(kek, cek);
         // return compact-form-jwe
         }).then(function (data) {
             cek = new Uint8Array(data);
@@ -514,7 +502,7 @@
             );
         });
     };
-    jweHmac = function (cek, header, iv, ciphertext, enc) {
+    jweTag = function (cek, header, iv, ciphertext, enc) {
         let ii;
         let jj;
         let tag;
@@ -665,6 +653,22 @@
         let nn;
         let rr;
         let tt;
+        if (isBrowser) {
+            return Promise.all([
+                crypto.subtle.importKey("raw", kek, "AES-KW", false, [
+                    "wrapKey"
+                ]),
+                crypto.subtle.importKey("raw", cek, {
+                    name: "AES-CBC"
+                }, true, [
+                    "encrypt"
+                ])
+            ]).then(function ([
+                kek, cek
+            ]) {
+                return crypto.subtle.wrapKey("raw", cek, kek, "AES-KW");
+            });
+        }
         // 2.2.1 Key Wrap
         // Inputs: Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
         // Key, K (the KEK).
