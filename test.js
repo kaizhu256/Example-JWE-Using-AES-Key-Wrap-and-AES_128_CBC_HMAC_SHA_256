@@ -337,9 +337,13 @@
         ] = jwe.split(".").map(bufferFromBase64url);
         // validate header
         kek = bufferFromBase64url(kek);
-        enc = jweValidateHeader(JSON.parse(
-            new TextDecoder().decode(header)
-        ), kek, cek, 8, iv);
+        try {
+            enc = jweValidateHeader(JSON.parse(
+                new TextDecoder().decode(header)
+            ), kek, cek, 8, iv);
+        } catch (ignore) {
+            assertOrThrow(undefined, "jwe validation failed");
+        }
         // init aad
         header = new TextEncoder().encode(bufferToBase64url(
             header
@@ -387,50 +391,6 @@
         }).then(function (data) {
             return new TextDecoder().decode(data);
         });
-    };
-    jweEncDict = {
-        "A128CBC-HS256": {
-            cekByteLength: 32,
-            cipher: "AES-CBC",
-            cipherNode: "aes-128-cbc",
-            ivByteLength: 16,
-            kekByteLength: 16
-        },
-        "A192CBC-HS384": {
-            cekByteLength: 48,
-            cipher: "AES-CBC",
-            cipherNode: "aes-192-cbc",
-            ivByteLength: 24,
-            kekByteLength: 24
-        },
-        "A256CBC-HS512": {
-            cekByteLength: 64,
-            cipher: "AES-CBC",
-            cipherNode: "aes-256-cbc",
-            ivByteLength: 32,
-            kekByteLength: 32
-        },
-        "A128GCM": {
-            cekByteLength: 16,
-            cipher: "AES-GCM",
-            cipherNode: "aes-128-gcm",
-            ivByteLength: 12,
-            kekByteLength: 16
-        },
-        "A192GCM": {
-            cekByteLength: 24,
-            cipher: "AES-GCM",
-            cipherNode: "aes-192-gcm",
-            ivByteLength: 12,
-            kekByteLength: 24
-        },
-        "A256GCM": {
-            cekByteLength: 32,
-            cipher: "AES-GCM",
-            cipherNode: "aes-256-gcm",
-            ivByteLength: 12,
-            kekByteLength: 32
-        }
     };
     jweEncrypt = function (kek, plaintext, header, cek, iv) {
     /*
@@ -709,6 +669,50 @@
             && iv.byteLength === enc.ivByteLength
         ), "jwe validation failed");
         return enc;
+    };
+    jweEncDict = {
+        "A128CBC-HS256": {
+            cekByteLength: 32,
+            cipher: "AES-CBC",
+            cipherNode: "aes-128-cbc",
+            ivByteLength: 16,
+            kekByteLength: 16
+        },
+        "A192CBC-HS384": {
+            cekByteLength: 48,
+            cipher: "AES-CBC",
+            cipherNode: "aes-192-cbc",
+            ivByteLength: 24,
+            kekByteLength: 24
+        },
+        "A256CBC-HS512": {
+            cekByteLength: 64,
+            cipher: "AES-CBC",
+            cipherNode: "aes-256-cbc",
+            ivByteLength: 32,
+            kekByteLength: 32
+        },
+        "A128GCM": {
+            cekByteLength: 16,
+            cipher: "AES-GCM",
+            cipherNode: "aes-128-gcm",
+            ivByteLength: 12,
+            kekByteLength: 16
+        },
+        "A192GCM": {
+            cekByteLength: 24,
+            cipher: "AES-GCM",
+            cipherNode: "aes-192-gcm",
+            ivByteLength: 12,
+            kekByteLength: 24
+        },
+        "A256GCM": {
+            cekByteLength: 32,
+            cipher: "AES-GCM",
+            cipherNode: "aes-256-gcm",
+            ivByteLength: 12,
+            kekByteLength: 32
+        }
     };
     testCase_jweKeyWrap_default = function () {
     /*
