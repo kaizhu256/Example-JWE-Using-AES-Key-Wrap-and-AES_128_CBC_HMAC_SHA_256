@@ -437,16 +437,15 @@
             ];
             ciphertext.push(cipher.final());
             ciphertext = Buffer.concat(ciphertext);
+            // key-wrap cek
+            cek = jweKeyWrap(kek, cek);
             // init tag
+            tag = (
+                enc.hmac
+                ? jweTag(cek, header, iv, ciphertext, enc)
+                : cipher.getAuthTag()
+            );
             return Promise.resolve().then(function () {
-                if (enc.hmac) {
-                    return jweTag(cek, header, iv, ciphertext, enc);
-                }
-                return cipher.getAuthTag();
-            }).then(function (data) {
-                tag = data;
-                // key-wrap cek
-                cek = jweKeyWrap(kek, cek);
                 // return compact-form-jwe
                 return (
                     new TextDecoder().decode(header)
@@ -538,9 +537,7 @@
             // hmac
             tag = crypto.createHmac(enc.hmacNode, cek).update(tag).digest();
             tag = tag.slice(0, tag.length >> 1);
-            return Promise.resolve().then(function () {
-                return tag;
-            });
+            return tag;
         }
         // env - browser
         return crypto.subtle.importKey("raw", cek, {
