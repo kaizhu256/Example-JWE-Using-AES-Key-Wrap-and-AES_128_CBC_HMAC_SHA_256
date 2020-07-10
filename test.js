@@ -182,7 +182,7 @@
     let jweKeyUnwrapNode;
     let jweKeyWrapNode;
     let jweValidateHeader;
-    let randomBytes;
+    let randomBuffer;
     let runMe;
     crypto = globalThis.crypto;
     if (
@@ -286,7 +286,7 @@
         }
         return buf;
     };
-    randomBytes = function (nn) {
+    randomBuffer = function (nn) {
     /*
      * this function will return random-bytes with length <nn>
      */
@@ -384,7 +384,7 @@
             "enc": "A256GCM"
         };
         kek = base64urlToBuffer(kek);
-        cek = base64urlToBuffer(cek || base64urlFromBuffer(randomBytes(
+        cek = base64urlToBuffer(cek || base64urlFromBuffer(randomBuffer(
             header.enc !== "A256GCM"
             ? 16
             : 32
@@ -398,7 +398,7 @@
         iv = (
             iv
             ? base64urlToBuffer(iv)
-            : randomBytes(12)
+            : randomBuffer(12)
         );
         plaintext = new TextEncoder().encode(plaintext);
         // env - node
@@ -727,7 +727,7 @@
             + "yourself. But you cannot trust us to let you face trouble "
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
-        myKek = base64urlFromBuffer(randomBytes(32));
+        myKek = base64urlFromBuffer(randomBuffer(32));
         myJwe = await jweEncrypt(myKek, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
@@ -858,7 +858,7 @@
             + "yourself. But you cannot trust us to let you face trouble "
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
-        myKek = base64urlFromBuffer(randomBytes(32));
+        myKek = base64urlFromBuffer(randomBuffer(32));
         myJwe = await jweEncrypt(myKek, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
