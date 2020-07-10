@@ -353,7 +353,9 @@
             cek = jweKeyUnwrap(kek, cek);
             // decrypt ciphertext
             cipher = crypto.createDecipheriv(enc.cipherNode, cek, iv);
-            cipher.setAuthTag(tag);
+            if (!enc.hmac) {
+                cipher.setAuthTag(tag);
+            }
             cipher.setAAD(header);
             tmp = [
                 cipher.update(Buffer.from(ciphertext))
@@ -378,10 +380,12 @@
         // decrypt ciphertext
         }).then(function (data) {
             cek = data;
-            tmp = ciphertext;
-            ciphertext = new Uint8Array(tmp.length + 16);
-            ciphertext.set(tmp);
-            ciphertext.set(tag, tmp.length);
+            if (!enc.hmac) {
+                tmp = ciphertext;
+                ciphertext = new Uint8Array(tmp.length + 16);
+                ciphertext.set(tmp);
+                ciphertext.set(tag, tmp.length);
+            }
             return crypto.subtle.decrypt({
                 additionalData: header,
                 iv,
@@ -436,7 +440,7 @@
             // init tag
             tag = (
                 enc.hmac
-                ? jweHmac(cek, header, iv, ciphertext)
+                ? jweHmac(cek, header, iv, ciphertext, enc)
                 : cipher.getAuthTag()
             );
             // key-wrap cek
@@ -496,7 +500,7 @@
             );
         });
     };
-    jweHmac = function (cek, header, iv, ciphertext) {
+    jweHmac = function (cek, header, iv, ciphertext, enc) {
         let ii;
         let jj;
         let tag;
@@ -528,7 +532,7 @@
         });
         // hmac
         tag = crypto.createHmac(
-            "sha256",
+            enc.hmacNode,
             cek.slice(0, 16)
         ).update(tag).digest();
         return tag.slice(0, tag.length >> 1);
