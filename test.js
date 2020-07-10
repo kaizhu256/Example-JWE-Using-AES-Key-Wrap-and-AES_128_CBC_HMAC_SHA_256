@@ -179,6 +179,7 @@
     let crypto;
     let isBrowser;
     let jweDecrypt;
+    let jweEncDict;
     let jweEncrypt;
     let jweKeyUnwrap;
     let jweKeyWrap;
@@ -214,6 +215,13 @@
     /*
      * this function will base64url-decode <str> to buf
      */
+        if (str && typeof str.byteLength === "number") {
+            return (
+                isBrowser
+                ? new Uint8Array(str)
+                : Buffer.from(str)
+            );
+        }
         // convert base64url to base64
         str = str.replace((
             /-/g
@@ -314,37 +322,34 @@
         let cek;
         let cipher;
         let ciphertext;
+        let enc;
         let header;
         let iv;
         let tag;
         let tmp;
-        // validate jwe
+        // init var
         assertOrThrow((
             /^[\w\-]+?\.[\w\-]+?\.[\w\-]+?\.[\w\-]*?\.[\w\-]+?$/
         ).test(jwe), "jwe validation failed");
-        // init var
         [
             header, cek, iv, ciphertext, tag
         ] = jwe.split(".").map(bufferFromBase64url);
+        header = JSON.parse(new TextDecoder().decode(header));
+        enc = jweEncDict[header.enc];
+        assertOrThrow(enc, "jwe validation failed");
         kek = bufferFromBase64url(kek);
         // validate header
-        jweValidateHeader(JSON.parse(new TextDecoder().decode(
-            header
-        )), kek, cek, 8, iv);
+        jweValidateHeader(header, kek, cek, 8, iv);
         // init aad
-        header = new TextEncoder().encode(bufferToBase64url(header));
+        header = new TextEncoder().encode(bufferToBase64url(
+            new TextEncoder().encode(JSON.stringify(header))
+        ));
         // env - node
         if (!isBrowser) {
             // key-unwrap cek
             cek = jweKeyUnwrap(kek, cek);
             // decrypt ciphertext
-            cipher = crypto.createDecipheriv((
-                cek.byteLength === 16
-                ? "aes-128-gcm"
-                : cek.byteLength === 24
-                ? "aes-192-gcm"
-                : "aes-256-gcm"
-            ), cek, iv);
+            cipher = crypto.createDecipheriv(enc.cipherNode, cek, iv);
             cipher.setAuthTag(tag);
             cipher.setAAD(header);
             tmp = [
@@ -364,7 +369,7 @@
             kek = data;
             return crypto.subtle.unwrapKey("raw", cek, kek, {
                 name: "AES-KW"
-            }, "AES-GCM", false, [
+            }, enc.cipher, false, [
                 "decrypt"
             ]);
         // decrypt ciphertext
@@ -377,11 +382,49 @@
             return crypto.subtle.decrypt({
                 additionalData: header,
                 iv,
-                name: "AES-GCM"
+                name: enc.cipher
             }, cek, ciphertext);
         }).then(function (data) {
             return new TextDecoder().decode(data);
         });
+    };
+    jweEncDict = {
+        "A128CBC-HS256": {
+            cekByteLength: 32,
+            cipher: "AES-CBC",
+            cipherNode: "aes-128-cbc",
+            ivByteLength: 16
+        },
+        "A192CBC-HS384": {
+            cekByteLength: 48,
+            cipher: "AES-CBC",
+            cipherNode: "aes-192-cbc",
+            ivByteLength: 24
+        },
+        "A256CBC-HS512": {
+            cekByteLength: 64,
+            cipher: "AES-CBC",
+            cipherNode: "aes-256-cbc",
+            ivByteLength: 32
+        },
+        "A128GCM": {
+            cekByteLength: 16,
+            cipher: "AES-GCM",
+            cipherNode: "aes-128-gcm",
+            ivByteLength: 12
+        },
+        "A192GCM": {
+            cekByteLength: 24,
+            cipher: "AES-GCM",
+            cipherNode: "aes-192-gcm",
+            ivByteLength: 12
+        },
+        "A256GCM": {
+            cekByteLength: 32,
+            cipher: "AES-GCM",
+            cipherNode: "aes-256-gcm",
+            ivByteLength: 12
+        }
     };
     jweEncrypt = function (kek, plaintext, header, cek, iv) {
     /*
@@ -390,26 +433,17 @@
      */
         let cipher;
         let ciphertext;
+        let enc;
         let tag;
         // init var
         header = header || {
             alg: "A256KW",
             enc: "A256GCM"
         };
-        cek = bufferFromBase64url(cek || bufferToBase64url(bufferRandom(
-            header.enc === "A128GCM"
-            ? 16
-            : header.enc === "A192GCM"
-            ? 24
-            : 32
-        )));
-        iv = (
-            iv
-            ? bufferFromBase64url(iv)
-            : header.enc === "A128CBC-HS256"
-            ? bufferRandom(16)
-            : bufferRandom(12)
-        );
+        enc = jweEncDict[header.enc];
+        assertOrThrow(enc, "jwe validation failed");
+        cek = bufferFromBase64url(cek || bufferRandom(enc.cekByteLength));
+        iv = bufferFromBase64url(iv || bufferRandom(enc.ivByteLength));
         kek = bufferFromBase64url(kek);
         plaintext = new TextEncoder().encode(plaintext);
         // validate header
@@ -421,13 +455,7 @@
         // env - node
         if (!isBrowser) {
             // encrypt plaintext
-            cipher = crypto.createCipheriv((
-                cek.byteLength === 16
-                ? "aes-128-gcm"
-                : cek.byteLength === 24
-                ? "aes-192-gcm"
-                : "aes-256-gcm"
-            ), cek, iv);
+            cipher = crypto.createCipheriv(enc.cipherNode, cek, iv);
             cipher.setAAD(header);
             ciphertext = [
                 cipher.update(plaintext)
@@ -451,7 +479,7 @@
         // env - browser
         // encrypt plaintext
         return crypto.subtle.importKey("raw", cek, {
-            name: "AES-GCM"
+            name: enc.cipher
         }, true, [
             "encrypt"
         ]).then(function (data) {
@@ -459,7 +487,7 @@
             return crypto.subtle.encrypt({
                 additionalData: header,
                 iv,
-                name: "AES-GCM"
+                name: enc.cipher
             }, cek, plaintext);
         }).then(function (data) {
             ciphertext = new Uint8Array(data);
@@ -808,6 +836,10 @@
                     let jwe;
                     let kek;
                     let plaintext;
+                    // bug-workaround - chrome does not support 192bit
+                    if (isBrowser && (alg === 192 || enc === 192)) {
+                        return;
+                    }
                     kek = bufferRandom(alg >> 3, "base64url");
                     jwe = await jweEncrypt(kek, plaintext0, {
                         alg: "A" + alg + "KW",
