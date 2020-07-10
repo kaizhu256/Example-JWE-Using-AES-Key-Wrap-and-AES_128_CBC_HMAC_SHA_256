@@ -388,12 +388,14 @@
         let tag;
         // init var
         header = header || {
-            "alg": "A256KW",
-            "enc": "A256GCM"
+            alg: "A256KW",
+            enc: "A256GCM"
         };
         cek = bufferFromBase64url(cek || bufferToBase64url(bufferRandom(
-            header.enc !== "A256GCM"
+            header.enc === "A128GCM"
             ? 16
+            : header.enc === "A192GCM"
+            ? 24
             : 32
         )));
         iv = (
@@ -682,7 +684,6 @@
         kek = bufferFromHex("000102030405060708090a0b0c0d0e0f");
         tmp = bufferToHex(jweKeyWrap(kek, cek));
         assertEqual(tmp, "1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5");
-        console.log("wrapped-key - " + tmp);
         cek = bufferToHex(jweKeyUnwrap(kek, bufferFromHex(tmp)));
         assertEqual(cek, "00112233445566778899aabbccddeeff");
         // 4.2 Wrap 128 bits of Key Data with a 192-bit KEK
@@ -730,12 +731,11 @@
     };
     testCase_jweKeyWrap_default();
     testCase_jweEncrypt_default = async function () {
+        let jwe;
+        let plaintext;
         // https://tools.ietf.org/id/draft-ietf-jose-cookbook-02.html#rfc.section.4.8
         // 4.8. Key Wrap using AES-KeyWrap with AES-GCM
-        let myJwe;
-        let myKek;
-        let myPlaintext;
-        myJwe = await jweEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
+        jwe = await jweEncrypt("GZy6sIZ6wl9NJOKB-jnmVQ", (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
             + "keep any secret of yours\u2013closer than you keep it "
@@ -746,9 +746,7 @@
             "kid": "81b20965-8332-43d9-a468-82160ad91ac8",
             "enc": "A128GCM"
         }, "aY5_Ghmk9KxWPBLu_glx1w", "Qx0pmsDa8KnJc9Jo");
-        console.log("encrypted jwe - " + myJwe);
-        // encrypted jwe - eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC04MjE2MGFkOTFhYzgiLCJlbmMiOiJBMTI4R0NNIn0.CBI6oDw8MydIx1IBntf_lQcw2MmJKIQx.Qx0pmsDa8KnJc9Jo.AwliP-KmWgsZ37BvzCefNen6VTbRK3QMA4TkvRkH0tP1bTdhtFJgJxeVmJkLD61A1hnWGetdg11c9ADsnWgL56NyxwSYjU1ZEHcGkd3EkU0vjHi9gTlb90qSYFfeF0LwkcTtjbYKCsiNJQkcIp1yeM03OmuiYSoYJVSpf7ej6zaYcMv3WwdxDFl8REwOhNImk2Xld2JXq6BR53TSFkyT7PwVLuq-1GwtGHlQeg7gDT6xW0JqHDPn_H-puQsmthc9Zg0ojmJfqqFvETUxLAF-KjcBTS5dNy6egwkYtOt8EIHK-oEsKYtZRaa8Z7MOZ7UGxGIMvEmxrGCPeJa14slv2-gaqK0kEThkaSqdYw0FkQZF.ER7MWJZ1FBI_NKvn7Zb1Lw // jslint ignore:line
-        assertEqual(myJwe, (
+        assertEqual(jwe, (
             // protectedHeader - Protected JWE header
             "eyJhbGciOiJBMTI4S1ciLCJraWQiOiI4MWIyMDk2NS04MzMyLTQzZDktYTQ2OC"
             + "04MjE2MGFkOTFhYzgiLCJlbmMiOiJBMTI4R0NNIn0"
@@ -770,38 +768,45 @@
             // tag - Authentication tag
             + "ER7MWJZ1FBI_NKvn7Zb1Lw"
         ));
-        // cek = "aY5_Ghmk9KxWPBLu_glx1w";
-        myPlaintext = await jweDecrypt(
-            "GZy6sIZ6wl9NJOKB-jnmVQ",
-            myJwe
-        );
-        console.log("decrypted jwe - " + myPlaintext);
-        assertEqual(myPlaintext, (
+        plaintext = await jweDecrypt("GZy6sIZ6wl9NJOKB-jnmVQ", jwe);
+        assertEqual(plaintext, (
             "You can trust us to stick with you through thick and "
             + "thin\u2013to the bitter end. And you can trust us to "
             + "keep any secret of yours\u2013closer than you keep it "
             + "yourself. But you cannot trust us to let you face trouble "
             + "alone, and go off without a word. We are your friends, Frodo."
         ));
-        myKek = bufferToBase64url(bufferRandom(32));
-        myJwe = await jweEncrypt(myKek, (
-            "You can trust us to stick with you through thick and "
-            + "thin\u2013to the bitter end. And you can trust us to "
-            + "keep any secret of yours\u2013closer than you keep it "
-            + "yourself. But you cannot trust us to let you face trouble "
-            + "alone, and go off without a word. We are your friends, Frodo."
-        ));
-        myPlaintext = await jweDecrypt(myKek, myJwe);
-        assertEqual(myPlaintext, (
-            "You can trust us to stick with you through thick and "
-            + "thin\u2013to the bitter end. And you can trust us to "
-            + "keep any secret of yours\u2013closer than you keep it "
-            + "yourself. But you cannot trust us to let you face trouble "
-            + "alone, and go off without a word. We are your friends, Frodo."
-        ));
-        myJwe = await jweEncrypt(myKek, "");
-        myPlaintext = await jweDecrypt(myKek, myJwe);
-        assertEqual(myPlaintext, "");
+        [
+            "", (
+                "You can trust us to stick with you through thick and "
+                + "thin\u2013to the bitter end. And you can trust us to "
+                + "keep any secret of yours\u2013closer than you keep it "
+                + "yourself. But you cannot trust us to let you face trouble "
+                + "alone, and go off without a word. We are your friends, "
+                + "Frodo."
+            )
+        ].forEach(function (plaintext0) {
+            [
+                128, 192, 256
+            ].forEach(function (alg) {
+                [
+                    128, 192, 256
+                ].forEach(async function (enc) {
+                    let jwe;
+                    let kek;
+                    let plaintext;
+                    kek = bufferToBase64url(bufferRandom(alg >> 3));
+                    jwe = await jweEncrypt(
+                        kek, plaintext0, {
+                            alg: "A" + alg + "KW",
+                            enc: "A" + enc + "GCM"
+                        }
+                    );
+                    plaintext = await jweDecrypt(kek, jwe);
+                    assertEqual(plaintext, plaintext0);
+                });
+            });
+        });
     };
     await testCase_jweEncrypt_default();
 }());
