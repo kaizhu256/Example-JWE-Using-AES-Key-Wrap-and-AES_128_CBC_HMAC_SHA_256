@@ -785,7 +785,11 @@
      */
         let enc;
         enc = jweEncDict[header && header.enc];
-        assertOrThrow(enc, jweValidationFailed);
+        assertOrThrow((
+            enc
+            && (cek.length - cekPadding) === enc.cekByteLength
+            && iv.length === enc.ivByteLength
+        ), jweValidationFailed);
         switch (header.alg + "." + kek.length) {
         case "A128KW.16":
         case "A192KW.24":
@@ -794,10 +798,6 @@
         default:
             assertOrThrow(undefined, jweValidationFailed);
         }
-        assertOrThrow((
-            (cek.length - cekPadding) === enc.cekByteLength
-            && iv.length === enc.ivByteLength
-        ), jweValidationFailed);
         return enc;
     };
     jweEncDict = {
@@ -807,8 +807,7 @@
             cipherNode: "aes-128-cbc",
             hmac: "SHA-256",
             hmacNode: "sha256",
-            ivByteLength: 16,
-            kekByteLength: 16
+            ivByteLength: 16
         },
         "A192CBC-HS384": {
             cekByteLength: 48,
@@ -816,8 +815,7 @@
             cipherNode: "aes-192-cbc",
             hmac: "SHA-384",
             hmacNode: "sha384",
-            ivByteLength: 24,
-            kekByteLength: 24
+            ivByteLength: 24
         },
         "A256CBC-HS512": {
             cekByteLength: 64,
@@ -825,29 +823,25 @@
             cipherNode: "aes-256-cbc",
             hmac: "SHA-512",
             hmacNode: "sha512",
-            ivByteLength: 32,
-            kekByteLength: 32
+            ivByteLength: 32
         },
         "A128GCM": {
             cekByteLength: 16,
             cipher: "AES-GCM",
             cipherNode: "aes-128-gcm",
-            ivByteLength: 12,
-            kekByteLength: 16
+            ivByteLength: 12
         },
         "A192GCM": {
             cekByteLength: 24,
             cipher: "AES-GCM",
             cipherNode: "aes-192-gcm",
-            ivByteLength: 12,
-            kekByteLength: 24
+            ivByteLength: 12
         },
         "A256GCM": {
             cekByteLength: 32,
             cipher: "AES-GCM",
             cipherNode: "aes-256-gcm",
-            ivByteLength: 12,
-            kekByteLength: 32
+            ivByteLength: 12
         }
     };
     jweValidationFailed = "jwe validation failed";
@@ -989,22 +983,27 @@
             )
         ].forEach(function (plaintext0) {
             [
-                128, 192, 256
+                "A128KW", "A192KW", "A256KW"
             ].forEach(function (alg) {
                 [
-                    128, 192, 256
+                    "A128CBC-HS256",
+                    //!! "A192CBC-HS384", "A256CBC-HS512",
+                    "A128GCM", "A192GCM", "A256GCM"
                 ].forEach(async function (enc) {
                     let jwe;
                     let kek;
                     let plaintext;
                     // bug-workaround - chrome does not support 192bit
-                    if (isBrowser && (alg === 192 || enc === 192)) {
+                    if (
+                        isBrowser
+                        && (alg.indexOf("192") >= 0 || enc.indexOf("192") >= 0)
+                    ) {
                         return;
                     }
-                    kek = bufferRandom(alg >> 3);
+                    kek = bufferRandom(alg.slice(1, 4) >> 3);
                     jwe = await jweEncrypt(kek, plaintext0, {
-                        alg: "A" + alg + "KW",
-                        enc: "A" + enc + "GCM"
+                        alg,
+                        enc
                     });
                     plaintext = await jweDecrypt(kek, jwe);
                     assertEqual(plaintext, plaintext0);
